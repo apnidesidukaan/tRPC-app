@@ -1,0 +1,389 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+// --------- Enums ----------
+enum ProductStatus {
+    draft
+    active
+    inactive
+    archived
+}
+
+enum BillingCycle {
+    daily
+    weekly
+    monthly
+    quarterly
+    yearly
+}
+
+// --------- Embedded types ----------
+type PriceTier {
+    minQty      Int
+    unitPrice   Float
+    customerTag String? // e.g., "B2B", "VIP"
+}
+
+type Dimensions {
+    length Float?
+    width  Float?
+    height Float?
+    unit   String? // e.g., "cm", "in"
+}
+
+type PackageInfo {
+    casePack     Int? // units per master carton
+    innerPack    Int? // units per inner box
+    packageNotes String?
+}
+
+type ProductVariantOption {
+    label   String
+    price   Float
+    stock   Int?
+    sku     String?
+    barcode String?
+    images  String[]
+}
+
+type ProductVariant {
+    variantType String // "size" | "color" | "flavor" | "material" | "custom"
+    name        String?
+    sizeSystem  String?
+    hexCode     String?
+    options     ProductVariantOption[]
+}
+
+type BundleComponent {
+    productId       String  @db.ObjectId // referenced Product id
+    quantity        Int
+    required        Boolean @default(true)
+    selectedOptions Json? // map of variant selections (if needed)
+}
+
+type DigitalAsset {
+    downloadUrls   String[]
+    fileSizeMB     Float?
+    licenseType    String? // "single-seat", "site", etc.
+    licenseTerms   String?
+    maxActivations Int?
+    drm            Boolean? @default(false)
+}
+
+type ServiceInfo {
+    durationMins  Int?
+    serviceType   String?
+    serviceArea   String? // e.g., "On-site", "Remote", "PAN India"
+    resourceHints String[] // e.g., tools/resources needed
+}
+
+type SubscriptionInfo {
+    billingCycle       BillingCycle
+    intervalCount      Int          @default(1) // e.g., every 1 month
+    trialDays          Int? // free trial length
+    autoRenew          Boolean      @default(true)
+    cancellationPolicy String?
+}
+
+type ChannelSku {
+    channel String // e.g., "amazon", "flipkart", "offline"
+    sku     String
+    price   Float?
+    live    Boolean @default(true)
+}
+
+// --------- Product (global catalog SKU) ----------
+model Product {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+
+    // Identity & Catalog
+    slug           String?
+    name           String
+    subtitle       String?
+    description    String?
+    brand          String?
+    manufacturer   String?
+    manufacturerId String? @db.ObjectId
+
+    // Global identifiers
+    sku             String?
+    gtin            String? // generic GTIN
+    upc             String?
+    ean             String?
+    isbn            String?
+    hsCode          String? // customs / HSN
+    taxCode         String? // e.g., GST code
+    countryOfOrigin String?
+
+    // Categorization
+    categoryId   String?  @db.ObjectId
+    // category       Category? @relation(fields: [categoryId], references: [id])
+    categoryPath String[] // e.g., ["Food & Beverages", "Pizza"]
+    tags         String[]
+
+    // Pricing (catalog-level/MSRP)
+    price        Float? // base / MSRP
+    mrp          Float? // alt name for MSRP
+    cost         Float? // COGS (optional)
+    currency     String      @default("INR")
+    tax          Float       @default(0) // percent
+    taxInclusive Boolean     @default(true)
+    discount     Float       @default(0)
+    priceTiers   PriceTier[]
+
+    // Inventory/Tracking (catalog defaults; vendor overrides live in Inventory)
+    trackInventory  Boolean @default(true)
+    isBatchTracked  Boolean @default(false)
+    isSerialTracked Boolean @default(false)
+    allowBackorder  Boolean @default(false)
+    stock           Int     @default(0)
+    reorderPoint    Int     @default(0)
+    safetyStock     Int     @default(0)
+    leadTimeDays    Int?
+
+    // Logistics & Packaging (catalog-level)
+    weight        Float? // grams
+    dimensions    Dimensions?
+    packageInfo   PackageInfo?
+    shippingClass String? // e.g., "heavy", "fragile"
+    freightClass  String?
+
+    // Variants
+    variants ProductVariant[]
+
+    // Bundles/Kits
+    isBundle   Boolean           @default(false)
+    components BundleComponent[]
+
+    // Digital / Service / Subscription
+    isDigital      Boolean           @default(false)
+    digital        DigitalAsset?
+    isService      Boolean           @default(false)
+    service        ServiceInfo?
+    isSubscription Boolean           @default(false)
+    subscription   SubscriptionInfo?
+
+    // Media
+    images    String[]
+    videos    String[]
+    documents String[]
+
+    // SEO
+    searchTags      String[]
+    keywords        String[]
+    metaTitle       String?
+    metaDescription String?
+    metaImage       String?
+
+    // Compliance & Food/Pharma options at catalog level
+    ageRestriction      Int?
+    warnings            String?
+    certifications      String[] // e.g., "ISI", "CE", "BIS"
+    allergens           String[] // if food
+    nutrition           Json? // facts as JSON
+    shelfLifeDays       Int?
+    storageInstructions String?
+    warrantyMonths      Int?
+    careInstructions    String?
+
+    // Sales channels
+    channelSkus ChannelSku[]
+
+    // Extensibility
+    attributes Json?
+
+    inventories Inventory[]
+
+    // Lifecycle
+    status         ProductStatus @default(active)
+    isDeleted      Boolean       @default(false)
+    approvalStatus String        @default("pending") // for catalog governance
+
+    // Audit
+    createdById  String? @db.ObjectId
+    updatedById  String? @db.ObjectId
+    approvedById String? @db.ObjectId
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([name])
+    @@index([slug])
+    @@index([status])
+    @@index([approvalStatus])
+}
+
+// --------- Inventory (vendor listing) ---------
+// Add these two lines to your existing Inventory to link a vendor item to a Product.
+model Inventory {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+
+    // Link to Product (global catalog)
+    productId String  @db.ObjectId
+    product   Product @relation(fields: [productId], references: [id])
+
+    // For restaurants
+    preparationTime Int?
+    isVeg           Boolean?
+    isCombo         Boolean  @default(false)
+    comboItems      Json?
+
+    // For pharmacy
+    prescriptionRequired Boolean?
+    batchNumber          String?
+    expiryDate           DateTime?
+    saltComposition      String?
+
+    // For tailoring
+    isService   Boolean?
+    duration    Int?
+    serviceType String?
+
+    // SEO / Search Metadata
+    searchTags      String[]
+    keywords        String[]
+    metaDescription String?
+    metaImage       String?
+
+    // Logistics Info (vendor overrides)
+    weight     Float?
+    dimensions Json?
+    fragile    Boolean?
+
+    name        String
+    description String?
+    categoryId  String  @db.ObjectId
+    // category    Category @relation(fields: [categoryId], references: [id])
+
+    attributes        Json?
+    stock             Int      @default(0) // vendor stock
+    lowStockThreshold Int      @default(10)
+    price             Float // vendor sell price
+    discountPrice     Float    @default(0)
+    tax               Float    @default(0) // percent
+    sku               String   @unique
+    images            String[]
+    status            String   @default("active")
+
+    createdById String? @db.ObjectId
+    // createdBy       Vendor?  @relation(fields: [createdById], references: [id])
+
+    isDeleted      Boolean @default(false)
+    approvalStatus String  @default("pending")
+    approvedById   String? @db.ObjectId
+    // approvedBy     AreaManager? @relation(fields: [approvedById], references: [id])
+    customFields   Json?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    Category  Category @relation(fields: [categoryId], references: [id])
+
+    @@index([name])
+    @@index([status])
+    @@index([approvalStatus])
+}
+
+// =========================================================
+
+model Category {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    name        String   @unique
+    description String
+    // moduleId    String?  @db.ObjectId
+    icon        String? // icon URL or path
+    isDeleted   Boolean  @default(false)
+    isPromoted  Boolean  @default(false)
+    createdBy   String?
+    updatedBy   String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    Inventory Inventory[]
+    // inventories Inventory[] // relation to Inventory model
+    moduleId  String      @db.ObjectId
+
+    Module Module @relation(fields: [moduleId], references: [id])
+}
+
+model Module {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    name        String   @unique
+    description String? // optional
+    businessId  String   @db.ObjectId
+    business    Business @relation(fields: [businessId], references: [id]) // Super Admin who created it
+
+    icon       String? // optional URL
+    isActive   Boolean @default(true)
+    isFeatured Boolean @default(true)
+    version    String  @default("1.0")
+    metadata   Json? // Prisma uses Json for Mixed type
+
+    // categoriesId String? // optional
+
+    createdBy String? // optional
+
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
+    // Inventory Inventory[]
+    Category  Category[]
+}
+
+model Business {
+    id          String       @id @default(auto()) @map("_id") @db.ObjectId
+    name        String       @unique
+    type        BusinessType @default(other)
+    description String?
+
+    ownerId String @db.ObjectId
+    // owner   Vendor @relation(fields: [ownerId], references: [id])
+
+    modules     Module[]
+    logo        String?
+    bannerImage String?
+    website     String?
+
+    // Embedded social links object
+    socialLinks Json? // Example: { "instagram": "...", "facebook": "...", "linkedin": "..." }
+
+    isActive  Boolean @default(true)
+    isDeleted Boolean @default(false)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+enum BusinessType {
+    agriculture
+    mining
+    manufacturing
+    wholesale
+    retail
+    logistics
+    service
+    financial_services
+    transportation
+    utilities
+    entertainment
+    media
+    sports
+    real_estate
+    construction
+    technology
+    healthcare
+    education
+    hospitality
+    legal_services
+    consulting
+    non_profit
+    government
+    other
+}
