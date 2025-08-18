@@ -6,27 +6,24 @@ import {
   ShoppingCart,
   Plus,
   Minus,
-  Star,
   ChevronLeft,
   ChevronRight,
-  Truck,
 
-  Clock,
 
 } from 'lucide-react';
 // import { useFetchInventoryItem } from '../../controllers/inventory';
 import { useParams } from 'next/navigation';
-import InventoryVendorStore from './InventoryVendorStore';
-// import { useInventoryVendorStore } from '../../controllers/store';
 import VendorByModules from './VendorByModules';
 import SimilarProducts from './SimilarProducts';
 import InventoryInformationTab from './InventoryInformationTab';
 import DeliveryInfo from './DeliveryInfo';
+import { api } from '~/trpc/react';
+import InventoryList from './ProductInventory';
 //===============================================================================================
 
 const ProductDetailPage = () => {
   //===============================================================================================
-const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(null);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState(0);
@@ -42,58 +39,15 @@ const [selectedVariant, setSelectedVariant] = useState(null);
 
 
 
-  const { moduleName, catName, id } = useParams();
-
-  // const { inventory: inventoryItem, refetch } = useFetchInventoryItem(id)
-
-  // useEffect(() => {
-  //   if (!inventoryItem) {
-  //     refetch()
-  //   }
-  // }, [inventoryItem, refetch]);
-
-  // const { inventoryVendorStoreData, refetchInventoryVendorStore } = useInventoryVendorStore()
-  // useEffect(() => {
-  //   if (!inventoryVendorStoreData) {
-  //     refetchInventoryVendorStore()
-  //   }
-  // }, [inventoryVendorStoreData]);
-
-  // State management
+  const { id } = useParams();
+  const { data: inventoryItem, isLoading, error } = api.product.getInventoryByProductId.useQuery(String(id));
+  const { data: product, } = api.product.getById.useQuery(String(id));
+  
+  
+  // console.log('inventoryItem ====', inventoryItem);
 
 
-  // i will dynamically set the price
-  const totalPrice = 254;
-  let deliveryTotal = 0;
-  // if (
-  //   inventoryItem &&
-  //   inventoryItem?.delivery &&
-  //   typeof inventoryItem?.delivery.freeThreshold === 'number'
-  // ) {
-  //   deliveryTotal =
-  //     totalPrice >= inventoryItem?.delivery.freeThreshold
-  //       ? 0
-  //       : inventoryItem?.delivery.fee;
-  // } else if (inventoryItem && inventoryItem?.delivery) {
-  //   deliveryTotal = inventoryItem?.delivery.fee;
-  // }
 
-  // const handleToppingChange = (toppingName) => {
-  //   setSelectedToppings(prev =>
-  //     prev.includes(toppingName)
-  //       ? prev.filter(t => t !== toppingName)
-  //       : [...prev, toppingName]
-  //   );
-  // };
-
-  // const renderStars = (rating) => {
-  //   return Array.from({ length: 5 }, (_, i) => (
-  //     <Star
-  //       key={i}
-  //       className={`w-4 h-4 ${i < Math.floor(rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-  //     />
-  //   ));
-  // };
   //===============================================================================================
 
   return (
@@ -111,11 +65,11 @@ const [selectedVariant, setSelectedVariant] = useState(null);
         {/* Product Images */}
         <div className="space-y-4">
           <div className=" relative bg-gray-100 rounded-lg overflow-hidden aspect-square">
-            {/* <img
-              src={inventoryItem?.image && inventoryItem?.image[currentImageIndex]}
-              alt={inventoryItem?.name}
+            <img
+              src={product?.metaImage}
+              alt={product?.name}
               className="w-full h-full object-cover"
-            /> */}
+            />
 
             {/* Action buttons */}
             <div className="absolute top-4 right-4 flex gap-2">
@@ -131,7 +85,7 @@ const [selectedVariant, setSelectedVariant] = useState(null);
             </div>
 
             {/* Navigation arrows */}
-            {inventoryItem?.image?.length > 1 && (
+            {inventoryItem?.metaImage && (
               <>
                 <button
                   onClick={() => setCurrentImageIndex(prev => prev === 0 ? inventoryItem?.images.length - 1 : prev - 1)}
@@ -151,39 +105,39 @@ const [selectedVariant, setSelectedVariant] = useState(null);
 
           {/* Thumbnails */}
           <div className="flex gap-2">
-            {inventoryItem?.image?.map((image, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentImageIndex(index)}
-                className={`w-20 h-20 rounded-lg overflow-hidden border-2 ${index === currentImageIndex ? 'border-blue-500' : 'border-gray-200'}`}
-              >
-                <img src={image} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
+            <button
+              // key={inventoryItem.id}
+              // onClick={() => setCurrentImageIndex(inventoryItem.id)}
+              className={`w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200'}`}
+            >
+              <img src={inventoryItem?.metaImage} alt="" className="w-full h-full object-cover" />
+            </button>
+            {/* {inventoryItem?.image?.map((image, index) => (
+            ))} */}
           </div>
         </div>
 
         {/* Product Info */}
         <div className="space-y-6">
           {/* Vendor Info */}
-          <InventoryVendorStore storeOwner={inventoryVendorStoreData} />
+          {/* <InventoryVendorStore storeOwner={inventoryVendorStoreData} /> */}
 
           {/* Product Details */}
           <div>
-            <h1 className="text-2xl font-bold mb-2">{inventoryItem?.name}</h1>
+            <h1 className="text-2xl font-bold mb-2">{product?.name}</h1>
             <div className="flex items-center gap-4 mb-3">
               <div className="flex items-center gap-1">
-                {renderStars(inventoryItem?.rating)}
-                <span className="text-sm text-gray-600">({inventoryItem?.reviewCount} reviews)</span>
+                {/* {renderStars(inventoryItem?.rating)} */}
+                <span className="text-sm text-gray-600">({product?.reviewCount} reviews)</span>
               </div>
-              {inventoryItem?.stock <= 5 && (
+              {product?.stock <= 5 && (
                 <span className="text-sm text-orange-600 font-medium">Only {inventoryItem?.stock} left!</span>
               )}
             </div>
 
             {/* Tags */}
             <div className="flex gap-2 mb-4">
-              {inventoryItem?.tags?.map(tag => (
+              {product?.tags?.map(tag => (
                 <span key={tag} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
                   {tag}
                 </span>
@@ -193,151 +147,36 @@ const [selectedVariant, setSelectedVariant] = useState(null);
             {/* Pricing */}
             <div className="flex items-center gap-3 mb-6">
               {/* <span className="text-3xl font-bold text-green-600">${inventoryItem?.sizes && inventoryItem?.sizes[selectedSize]?.price?.toFixed(2)}</span> */}
-              <span className="text-3xl font-bold text-green-600">${inventoryItem?.price?.toFixed(2)}</span>
+              <span className="text-3xl font-bold text-green-600">${inventoryItem && inventoryItem[0]?.price?.toFixed(2)}</span>
               {/* <span className="text-lg text-gray-500 line-through">${inventoryItem?.sizes && inventoryItem?.sizes[selectedSize]?.originalPrice?.toFixed(2)}</span> */}
-              <span className="text-lg text-gray-500 line-through">${inventoryItem?.originalPrice?.toFixed(2)}</span>
+              <span className="text-lg text-gray-500 line-through">${inventoryItem && inventoryItem[0]?.originalPrice?.toFixed(2)}</span>
               <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
-                {inventoryItem?.discount}% OFF
+                {product?.discount}% OFF
               </span>
             </div>
           </div>
 
 
 
-          <div>
-            {inventoryItem?.variants?.map((variant, variantIndex) => (
-              <div key={variantIndex} className="mb-6">
-                {/* Variant Name */}
-                <h3 className="font-semibold mb-3">{variant.name}</h3>
-
-                {/* Variant Options */}
-                <div className="grid grid-cols-3 gap-2">
-                  {variant?.options?.map((option, optionIndex) => (
-                    <button
-                      key={optionIndex}
-                      onClick={() => setSelectedVariant({
-                        variantIndex,
-                        optionIndex
-                      })}
-                      className={`p-3 rounded-lg border text-center ${selectedVariant?.variantIndex === variantIndex &&
-                          selectedVariant?.optionIndex === optionIndex
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                    >
-                      <div className="font-medium">{option.label}</div>
-                      <div className="text-sm text-gray-600">
-                        ₹{option.price}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Stock: {option.stock}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-
-
-
-          {/* Size Selection */}
-          <div>
-            <h3 className="font-semibold mb-3">Size</h3>
-            <div className="grid grid-cols-3 gap-2">
-              {inventoryItem?.sizes?.map((size, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedSize(index)}
-                  className={`p-3 rounded-lg border text-center ${selectedSize === index ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-                >
-                  <div className="font-medium">{size.name}</div>
-                  <div className="text-sm text-gray-600">${size.price}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-
-          {/* Quantity and Add to Cart */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <span className="font-semibold">Quantity:</span>
-              <div className="flex items-center border rounded-lg">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-2 hover:bg-gray-100 transition-colors"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <span className="px-4 py-2 border-x">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="p-2 hover:bg-gray-100 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Total Price */}
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex justify-between items-center text-lg font-semibold">
-                <span>Total:</span>
-                {/* set the dynamic price */}
-                <span className="text-green-600">${((inventoryItem.originalPrice * inventoryItem.discount) / 100) * quantity}</span>
-              </div>
-            </div>
+        
 
 
 
 
 
-
-            {/* Add to Cart Button */}
-            <button
-              // disabled={!selectedCrust}
-              className="w-full py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              // on click the data do be stored in the session storage of the client if not login otherwie we gonnna make the post req to server
-              onClick={() => {
-                const { name, originalPrice, discount, image, category, module, id } = inventoryItem;
-                const price = ((originalPrice - (originalPrice * discount) / 100) * quantity);
-                const existingCart = JSON.parse(localStorage.getItem("cart_product")) || [];
-
-                const newCartItem = {
-                  name,
-                  id,
-                  originalPrice,
-                  discount,
-                  image,
-                  category,
-                  module,
-                  price,
-                  quantity
-                };
-                const newCart = existingCart.filter(product => product.id != id)
-                const updatedCart = [newCartItem, ...newCart];
+          <InventoryList inventoryItem={inventoryItem}/>
 
 
-                localStorage.setItem("cart_product", JSON.stringify(updatedCart));
-
-              }}
-            >
-              <ShoppingCart className="w-5 h-5" />
-              Add to Cart
-            </button>
-          </div>
-
+        
           <DeliveryInfo />
         </div>
       </div>
 
-      <VendorByModules />
+      {/* <VendorByModules /> */}
 
-      <InventoryInformationTab />
+      {/* <InventoryInformationTab /> */}
 
-      <SimilarProducts />
+      {/* <SimilarProducts /> */}
     </div>
   );
 };

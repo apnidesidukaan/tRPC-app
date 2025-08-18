@@ -3,40 +3,38 @@ import React, { useState } from 'react';
 import { Input } from '../input/input';
 import Loader from '../status/Loader';
 import Logo from '../logo/Logo';
-// import httpClient from '../../../config/httpClient';
+import { signIn } from "next-auth/react";
 
 const LoginModal = ({ isOpen, onClose }) => {
   const [mobile, setMobile] = useState('');
+  const [password, setPassword] = useState(''); // if you want password auth
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   setIsSubmitting(true);
-  //   setError('');
-  //   setSuccessMessage('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+    setSuccessMessage('');
 
-  //   try {
-  //     const res = await httpClient.post('/api/v1/user/auth/login-mobile', { mobile });
+    const res = await signIn("credentials", {
+      redirect: false, // don’t redirect, handle response manually
+      mobile,
+      // password,
+    });
 
-  //     if (res.status !== 200) {
-  //       setError(res?.data?.message || 'Login failed');
-  //     } else {
-  //       setSuccessMessage(res?.data?.message || 'Login successful');
-  //       localStorage.setItem('token', res?.data?.token);
+    if (res?.error) {
+      setError(res.error);
+    } else {
+      setSuccessMessage("Login successful");
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    }
 
-  //       setTimeout(() => {
-  //         onClose();
-  //       }, 1000);
-  //     }
-  //   } catch (err) {
-  //     console.error('Login error:', err?.response?.data?.message);
-  //     setError(err?.response?.data?.message || 'Something went wrong. Please try again.');
-  //   }
-
-  //   setIsSubmitting(false);
-  // };
+    setIsSubmitting(false);
+  };
 
   if (!isOpen) return null;
 
@@ -64,8 +62,25 @@ const LoginModal = ({ isOpen, onClose }) => {
               className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
             />
 
+            {/* optional password field */}
+            {/* <Input
+              type="password"
+              name="password"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            /> */}
+
             <p className="text-xs text-center text-muted-foreground">
-              By continuing, you agree to our <span className="text-accent underline cursor-pointer">Terms of Service</span> & <span className="text-accent underline cursor-pointer">Privacy Policy</span>.
+              By continuing, you agree to our{" "}
+              <span className="text-accent underline cursor-pointer">
+                Terms of Service
+              </span>{" "}
+              &{" "}
+              <span className="text-accent underline cursor-pointer">
+                Privacy Policy
+              </span>.
             </p>
 
             {error && (

@@ -109,6 +109,7 @@ export const inventoryRouter = createTRPCRouter({
     getById: publicProcedure
         .input(z.string())
         .query(async ({ input }) => {
+
             const inventory = await db.inventory.findUnique({
                 where: { id: input },
             });

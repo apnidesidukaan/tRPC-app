@@ -277,15 +277,20 @@ model Inventory {
     createdById String? @db.ObjectId
     // createdBy       Vendor?  @relation(fields: [createdById], references: [id])
 
-    isDeleted      Boolean @default(false)
-    approvalStatus String  @default("pending")
-    approvedById   String? @db.ObjectId
+    isDeleted      Boolean    @default(false)
+    approvalStatus String     @default("pending")
+    approvedById   String?    @db.ObjectId
     // approvedBy     AreaManager? @relation(fields: [approvedById], references: [id])
     customFields   Json?
+    cartId         String?    @db.ObjectId
+    // cartId         Cart    @relation(fields: [cartId], references: [id])
+    CartItem       CartItem[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
     Category  Category @relation(fields: [categoryId], references: [id])
+    // CartItem  CartItem[]
+    Cart      Cart?    @relation(fields: [cartId], references: [id])
 
     @@index([name])
     @@index([status])
@@ -386,4 +391,129 @@ enum BusinessType {
     non_profit
     government
     other
+}
+
+// Each user can have a Cart
+model Cart {
+    id     String @id @default(auto()) @map("_id") @db.ObjectId
+    userId String @db.ObjectId
+    // user      User     @relation(fields: [userId], references: [id])  // uncomment if User model exists
+
+    items CartItem[]
+
+    status    CartStatus  @default(active) // active | checkedOut | abandoned
+    createdAt DateTime    @default(now())
+    updatedAt DateTime    @updatedAt
+    Inventory Inventory[]
+}
+
+// Each entry in the cart represents one inventory variant (checkout item)
+model CartItem {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+
+    cartId String @db.ObjectId
+    cart   Cart   @relation(fields: [cartId], references: [id])
+
+    inventoryId String    @db.ObjectId
+    inventory   Inventory @relation(fields: [inventoryId], references: [id])
+
+    quantity Int @default(1)
+
+    // Snapshot fields (to preserve info even if vendor updates inventory later)
+    name     String
+    price    Float // unit price at the time of adding
+    discount Float   @default(0)
+    image    String?
+    vendorId String? @db.ObjectId
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+enum CartStatus {
+    active
+    checkedOut
+    abandoned
+}
+
+model Role {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    name        String   @unique
+    permissions String[] // list of assigned permissions
+    createdBy   String   @default("system")
+    isDeleted   Boolean  @default(false)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+    User        User[]
+}
+
+model User {
+    id           String @id @default(auto()) @map("_id") @db.ObjectId
+    name         String
+    mobile       String @unique
+    email        String @unique
+    passwordHash String
+
+    dob    DateTime?
+    gender Gender
+
+    address Address[]
+
+    bankAccountDetails BankAccountDetails[]
+    UPIid              String?
+
+    referralCode   String? @unique @db.String
+    agreementCheck Boolean
+
+    //   businessId      String?   @db.ObjectId
+    //   business        Business? @relation(fields: [businessId], references: [id])
+
+    roleId String @db.ObjectId
+    role   Role   @relation(fields: [roleId], references: [id])
+
+    isVerified Boolean @default(false)
+    isActive   Boolean @default(true)
+    isDeleted  Boolean @default(false)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+enum Gender {
+    male
+    female
+    other
+}
+
+model Address {
+    id     String @id @default(auto()) @map("_id") @db.ObjectId
+    userId String @db.ObjectId
+    user   User   @relation(fields: [userId], references: [id])
+
+    label    String? @default("Home")
+    street   String?
+    landmark String?
+    area     String?
+    city     String?
+    state    String?
+    country  String?
+    zipCode  String?
+
+    geoLat Float?
+    geoLng Float?
+
+    contactName  String?
+    contactPhone String?
+    isDefault    Boolean @default(false)
+}
+
+model BankAccountDetails {
+    id     String @id @default(auto()) @map("_id") @db.ObjectId
+    userId String @db.ObjectId
+    user   User   @relation(fields: [userId], references: [id])
+
+    accountHolderName String?
+    accountNumber     String?
+    bankName          String?
+    IFSC              String?
 }

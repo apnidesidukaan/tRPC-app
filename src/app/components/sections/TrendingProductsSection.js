@@ -9,7 +9,6 @@ import { api } from '~/trpc/react';
 const TrendingProductsSection = () => {
 
     const {data:products }= api?.product?.getAll.useQuery();
-    console.log('products=========', products);
 
     // const [products, setProducts] = useState([]);
 

@@ -205,15 +205,30 @@ export const productRouter = createTRPCRouter({
     }),
 
 
-getInventoryCountByProductId: publicProcedure
-  .input(z.string())
-  .query(async ({ input }) => {
-    const count = await db.inventory.count({
-      where: { productId: input },
-    });
+  getInventoryByProductId: publicProcedure
+    .input(z.string()) // expecting productId as string
+    .query(async ({ input }) => {
+      const inventories = await db.inventory.findMany({
+        where: {
+          productId: input, // filter by productId
+        },
+        include: {
+          product: true, // also fetch product details if needed
+        },
+      });
 
-    return { productId: input, count };
-  }),
+      return inventories;
+    }),
+
+  getInventoryCountByProductId: publicProcedure
+    .input(z.string())
+    .query(async ({ input }) => {
+      const count = await db.inventory.count({
+        where: { productId: input },
+      });
+
+      return { productId: input, count };
+    }),
 
 
 
