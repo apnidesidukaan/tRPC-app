@@ -9,14 +9,41 @@ export default function InventoryList({ inventoryItem }) {
 
   // console.log('session=========', session);
 
+  const [cartItems, setCartItems] = useState([]);
 
   const { getCartItems, addItemToCart } = useCartManager()
-
   useEffect(() => {
     // Fetch cart items when component mounts
-    const cartItems = getCartItems();
-    // console.log('Cart Items:', cartItems);
-  }, [getCartItems]);
+    const cartData = getCartItems() || [];
+    setCartItems(cartData);
+  }, []);
+
+
+
+  // useEffect(() => {
+  //   // Fetch cart items when component mounts
+
+
+  //   const newSelected = new Set();
+  //   const newQuantities = {};
+
+  //   cartItems.forEach((cartItem) => {
+  //     newSelected.add(cartItem.id);
+  //     newQuantities[cartItem.id] = cartItem.quantity;
+  //   });
+
+  //   setSelectedItems(newSelected);
+  //   setQuantities(newQuantities);
+  // }, []);
+
+  const cartMatches = getCartItems()?.filter(cart =>
+    inventoryItem?.filter(inv => inv?._id === cart?.inventoryId)
+  );
+
+  console.log("cartMatches =====", cartMatches);
+
+
+
   // =========================================================
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [quantities, setQuantities] = useState({});
@@ -54,19 +81,26 @@ export default function InventoryList({ inventoryItem }) {
       newSelected.add(itemId);
       setQuantities({ ...quantities, [itemId]: quantity });
       // Add item to cart when selected
-      console.log(item,quantity)
+      // console.log(item, quantity)
       addItemToCart(item, quantity);
     }
     setSelectedItems(newSelected);
   };
 
+
+
+
   const updateQuantity = (itemId, quantity) => {
     if (quantity > 0) {
       setQuantities({ ...quantities, [itemId]: quantity });
-      // Update cart item quantity
-      addItemToCart(itemId, quantity);
+
+      const item = inventoryItem.find(inv => inv.id === itemId);
+      if (item) {
+        addItemToCart(item, quantity);
+      }
     }
   };
+
 
   const getTotalAmount = () => {
     return Array.from(selectedItems).reduce((total, itemId) => {
@@ -76,8 +110,15 @@ export default function InventoryList({ inventoryItem }) {
     }, 0);
   };
 
+  // const getTotalItems = () => {
+  //   return Array.from(selectedItems).reduce((total, itemId) => {
+  //     return total + (quantities[itemId] || 1);
+  //   }, 0);
+  // };
+
+
   const getTotalItems = () => {
-    return Array.from(selectedItems).reduce((total, itemId) => {
+    return Array.from(cartMatches).reduce((total, itemId) => {
       return total + (quantities[itemId] || 1);
     }, 0);
   };
@@ -105,13 +146,24 @@ export default function InventoryList({ inventoryItem }) {
         return { bg: 'bg-gray-100', text: 'text-gray-800', icon: '❓' };
     }
   };
+
+
+
   // =========================================================
 
   return (
     <div className="b-accent p-6 max-w-7xl mx-auto">
 
       {/* Cart Summary */}
-      {selectedItems.size > 0 && (
+      {/* {selectedItems.size > 0 && (
+        <div className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 2.5M7 13l2.5 2.5m6-7a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span className="font-semibold">{getTotalItems()} items</span>
+        </div>
+      )} */}
+      {cartMatches.length > 0 && (
         <div className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 2.5M7 13l2.5 2.5m6-7a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -163,9 +215,12 @@ export default function InventoryList({ inventoryItem }) {
       {/* Grid View  ==================================================================*/}
       {viewMode === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-6">
-          {inventoryItem.map((inv) => {
+          {inventoryItem?.map((inv) => {
+            // console.log('==============', quantities[inv.id]);
+
             const isSelected = selectedItems.has(inv.id);
-            const quantity = quantities[inv.id] || 1;
+            // const quantity = quantities[inv.id] || 1;
+            const quantity = cartMatches.find(cart => cart.inventoryId === inv.id)?.quantity || 0;
             const statusConfig = getStatusConfig(inv.status);
             const approvalConfig = getApprovalConfig(inv.approvalStatus);
             const isLowStock = inv.stock <= (inv.lowStockThreshold || 10);
@@ -251,40 +306,40 @@ export default function InventoryList({ inventoryItem }) {
                   </div> */}
 
                   {/* Quantity Selector */}
-                  {isSelected && (
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="text-sm font-medium text-gray-700 block mb-2">
-                        Quantity
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateQuantity(inv.id, Math.max(1, quantity - 1))}
-                          className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          value={quantity}
-                          onChange={(e) => updateQuantity(inv.id, Math.max(1, parseInt(e.target.value) || 1))}
-                          className="w-16 text-center py-1 px-2 border border-gray-300 rounded-md text-sm font-medium"
-                          min="1"
-                          max={inv.stock}
-                        />
-                        <button
-                          onClick={() => updateQuantity(inv.id, Math.min(inv.stock, quantity + 1))}
-                          className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <div className="mt-2 text-right">
-                        <span className="text-sm font-semibold text-indigo-600">
-                          Subtotal: ₹{Number((inv.price || 0) * quantity).toLocaleString('en-IN')}
-                        </span>
-                      </div>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <label className="text-sm font-medium text-gray-700 block mb-2">
+                      Quantity
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateQuantity(inv.id, Math.max(1, quantity - 1))}
+                        className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        value={quantity}
+                        onChange={(e) => updateQuantity(inv.id, Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-16 text-center py-1 px-2 border border-gray-300 rounded-md text-sm font-medium"
+                        min="1"
+                        max={inv.stock}
+                      />
+                      <button
+                        onClick={() => updateQuantity(inv.id, Math.min(inv.stock, quantity + 1))}
+                        className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                      >
+                        +
+                      </button>
                     </div>
-                  )}
+                    <div className="mt-2 text-right">
+                      <span className="text-sm font-semibold text-indigo-600">
+                        Subtotal: ₹{Number((inv.price || 0) * quantity).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                  {/* {isSelected && (
+                  )} */}
                 </div>
               </div>
             );

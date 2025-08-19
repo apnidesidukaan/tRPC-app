@@ -24,23 +24,8 @@ import {
 
 // Mock type definition for demo
 type InventoryItemProps = {
-  inventory: {
-    id: string;
-    name: string;
-    description?: string;
-    price: number;
-    stock: number;
-    status: string;
-    isVeg?: boolean;
-    isService?: boolean;
-    images?: string[];
-    category?: string;
-    rating?: number;
-    discount?: number;
-    isNew?: boolean;
-    isTrending?: boolean;
-    isFeatured?: boolean;
-  };
+  inventory: any; // Use any type to avoid type conflicts
+  cartItems: any[];
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onView?: (id: string) => void;
@@ -50,6 +35,7 @@ type InventoryItemProps = {
 
 export const InventoryItem = ({
   inventory,
+  cartItems,
   onEdit,
   onDelete,
   onView
@@ -57,6 +43,13 @@ export const InventoryItem = ({
   const [isLiked, setIsLiked] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Find if this inventory item is in the cart and get its quantity
+  const cartItem = cartItems?.find((item: any) =>
+    item.inventoryId === inventory.id || item.id === inventory.id
+  );
+  const isInCart = !!cartItem;
+  const cartQuantity = cartItem ? (cartItem.quantity || 1) : 0;
 
   // Auto-rotate images on hover
   const handleMouseEnter = () => {
@@ -169,7 +162,7 @@ export const InventoryItem = ({
             {/* Image Indicators */}
             {inventory.images.length > 1 && (
               <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-                {inventory.images.map((_, index) => (
+                {inventory.images.map((_: any, index: any) => (
                   <div
                     key={index}
                     className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${index === currentImageIndex
@@ -243,6 +236,19 @@ export const InventoryItem = ({
             </div>
           </div>
         </div>
+        
+        {/* Cart Status Indicator */}
+        {isInCart && (
+          <div className="mt-2 p-2 bg-green-100 rounded-lg flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-3 h-3 rounded-full bg-green-500 mr-2 animate-pulse"></div>
+              <span className="text-green-800 text-sm font-medium">
+                In Cart: {cartQuantity} unit{cartQuantity > 1 ? 's' : ''}
+              </span>
+            </div>
+            <FaShoppingCart className="text-green-600" />
+          </div>
+        )}
 
         {/* Status and Type Badges */}
         <div className="flex flex-wrap gap-2">

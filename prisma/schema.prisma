@@ -286,11 +286,12 @@ model Inventory {
     // cartId         Cart    @relation(fields: [cartId], references: [id])
     CartItem       CartItem[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    Category  Category @relation(fields: [categoryId], references: [id])
+    createdAt DateTime    @default(now())
+    updatedAt DateTime    @updatedAt
+    Category  Category    @relation(fields: [categoryId], references: [id])
     // CartItem  CartItem[]
-    Cart      Cart?    @relation(fields: [cartId], references: [id])
+    Cart      Cart?       @relation(fields: [cartId], references: [id])
+    OrderItem OrderItem[]
 
     @@index([name])
     @@index([status])
@@ -477,6 +478,7 @@ model User {
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    Order     Order[]
 }
 
 enum Gender {
@@ -505,6 +507,7 @@ model Address {
     contactName  String?
     contactPhone String?
     isDefault    Boolean @default(false)
+    Order        Order[]
 }
 
 model BankAccountDetails {
@@ -520,123 +523,123 @@ model BankAccountDetails {
 
 // --------- Enums ----------
 enum OrderStatus {
-  pending
-  confirmed
-  paid
-  fulfilled
-  shipped
-  delivered
-  cancelled
-  refunded
+    pending
+    confirmed
+    paid
+    fulfilled
+    shipped
+    delivered
+    cancelled
+    refunded
 }
 
 enum PaymentStatus {
-  pending
-  authorized
-  captured
-  failed
-  refunded
-  partially_refunded
+    pending
+    authorized
+    captured
+    failed
+    refunded
+    partially_refunded
 }
 
 enum PaymentMethod {
-  card
-  upi
-  cod
-  net_banking
-  wallet
+    card
+    upi
+    cod
+    net_banking
+    wallet
 }
 
 // --------- Order Models ----------
 model Order {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  orderNo    Int      @unique @default(autoincrement()) // human-friendly number
+    id      String @id @default(auto()) @map("_id") @db.ObjectId
+    orderNo Int    @unique
+    // Who placed the order
+    userId  String @db.ObjectId
+    user    User   @relation(fields: [userId], references: [id])
 
-  // Who placed the order
-  userId String @db.ObjectId
-  user   User   @relation(fields: [userId], references: [id])
+    // Delivery details
+    shippingAddress Address? @relation(fields: [addressId], references: [id])
 
-  // Delivery details
-  shippingAddress Address?
+    // Status
+    status        OrderStatus   @default(pending)
+    paymentStatus PaymentStatus @default(pending)
 
-  // Status
-  status        OrderStatus   @default(pending)
-  paymentStatus PaymentStatus @default(pending)
+    // Pricing
+    subtotal      Float
+    tax           Float @default(0)
+    shippingFee   Float @default(0)
+    discountTotal Float @default(0)
+    total         Float
 
-  // Pricing
-  subtotal      Float
-  tax           Float      @default(0)
-  shippingFee   Float      @default(0)
-  discountTotal Float      @default(0)
-  total         Float
+    currency String @default("INR")
 
-  currency String @default("INR")
+    notes    String?
+    metadata Json?
 
-  notes    String?
-  metadata Json?
+    placedAt  DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
-  placedAt  DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    items     OrderItem[]
+    payments  Payment[]
+    shipment  Shipment[]
+    addressId String?     @db.ObjectId
 
-  items    OrderItem[]
-  payments Payment[]
-  shipment Shipment?
-
-  @@index([userId, placedAt])
-  @@index([status, placedAt])
+    @@index([userId, placedAt])
+    @@index([status, placedAt])
 }
 
 model OrderItem {
-  id        String @id @default(auto()) @map("_id") @db.ObjectId
+    id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  orderId String @db.ObjectId
-  order   Order  @relation(fields: [orderId], references: [id])
+    orderId String @db.ObjectId
+    order   Order  @relation(fields: [orderId], references: [id])
 
-  inventoryId String    @db.ObjectId
-  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+    inventoryId String    @db.ObjectId
+    inventory   Inventory @relation(fields: [inventoryId], references: [id])
 
-  // Snapshot fields (preserve info even if Inventory changes)
-  name     String
-  sku      String?
-  quantity Int
-  price    Float // unit price
-  discount Float @default(0)
-  image    String?
+    // Snapshot fields (preserve info even if Inventory changes)
+    name     String
+    sku      String?
+    quantity Int
+    price    Float // unit price
+    discount Float   @default(0)
+    image    String?
 
-  total Float // line total
+    total Float // line total
 }
 
 model Payment {
-  id          String         @id @default(auto()) @map("_id") @db.ObjectId
-  orderId     String         @db.ObjectId
-  order       Order          @relation(fields: [orderId], references: [id])
+    id      String @id @default(auto()) @map("_id") @db.ObjectId
+    orderId String @db.ObjectId
+    order   Order  @relation(fields: [orderId], references: [id])
 
-  method      PaymentMethod
-  status      PaymentStatus  @default(pending)
-  amount      Float
-  currency    String         @default("INR")
+    method   PaymentMethod
+    status   PaymentStatus @default(pending)
+    amount   Float
+    currency String        @default("INR")
 
-  provider    String?        // Razorpay, Stripe, Paytm...
-  providerRef String?        @unique // txn id from provider
-  errorMsg    String?
+    provider    String? // Razorpay, Stripe, Paytm...
+    providerRef String? @unique // txn id from provider
+    errorMsg    String?
 
-  createdAt DateTime @default(now())
+    createdAt DateTime @default(now())
 }
 
 model Shipment {
-  id        String        @id @default(auto()) @map("_id") @db.ObjectId
-  orderId   String        @db.ObjectId
-  order     Order         @relation(fields: [orderId], references: [id])
+    id      String @id @default(auto()) @map("_id") @db.ObjectId
+    orderId String @db.ObjectId
+    order   Order  @relation(fields: [orderId], references: [id])
 
-  carrier        String?
-  trackingNumber String?  @unique
-  status         String   @default("pending") // you can enum-ify like ShipmentStatus
-  shippedAt      DateTime?
-  deliveredAt    DateTime?
+    carrier        String?
+    trackingNumber String?   @unique
+    status         String    @default("pending") // you can enum-ify like ShipmentStatus
+    shippedAt      DateTime?
+    deliveredAt    DateTime?
 
-  toAddressSnapshot   Json?
-  fromAddressSnapshot Json?
-  notes               String?
+    toAddressSnapshot   Json?
+    fromAddressSnapshot Json?
+    notes               String?
 
-  createdAt DateTime @default(now())
+    createdAt DateTime @default(now())
 }

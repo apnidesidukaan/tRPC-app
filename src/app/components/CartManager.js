@@ -32,8 +32,8 @@ export const useCartManager = () => {
         // ..other requried fields will be here
       }
     if (session?.user) {
-      console.log(inventory)
-      console.log(data)
+      // console.log(inventory)
+      // console.log(data)
       // User is authenticated, add to server cart
       addItemToServerCart.mutate(
         data

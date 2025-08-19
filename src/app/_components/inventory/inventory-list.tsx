@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { InventoryItem } from "./inventory-item";
 import { type RouterOutputs } from "~/trpc/react";
+import { useCartManager } from "~/app/components/CartManager";
 
 type InventoryListProps = {
   initialInventories: RouterOutputs["inventory"]["getAll"];
@@ -13,6 +14,8 @@ type InventoryListProps = {
 export const InventoryList = ({ initialInventories }: InventoryListProps) => {
   const router = useRouter();
   const [inventories, setInventories] = useState(initialInventories);
+  const { getCartItems } = useCartManager();
+  const [cartItems, setCartItems] = useState<any[]>([]);
   
   const utils = api.useUtils();
   const deleteInventoryMutation = api.inventory.delete.useMutation({
@@ -21,6 +24,12 @@ export const InventoryList = ({ initialInventories }: InventoryListProps) => {
       router.refresh();
     },
   });
+
+  // Fetch cart items when component mounts
+  useEffect(() => {
+    const cartData = getCartItems();
+    setCartItems(cartData);
+  }, [getCartItems]);
 
   const handleEdit = (id: string) => {
     router.push(`/inventory/${id}/edit`);
@@ -56,6 +65,7 @@ export const InventoryList = ({ initialInventories }: InventoryListProps) => {
         <InventoryItem
           key={inventory.id}
           inventory={inventory}
+          cartItems={cartItems}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
