@@ -42,7 +42,7 @@ const ProductDetailPage = () => {
   const { id } = useParams();
   const { data: inventoryItem, isLoading, error } = api.product.getInventoryByProductId.useQuery(String(id));
   const { data: product, } = api.product.getById.useQuery(String(id));
-  
+  console.log(product)
   
   // console.log('inventoryItem ====', inventoryItem);
 
@@ -58,6 +58,7 @@ const ProductDetailPage = () => {
         <span>Store</span> <span className="mx-2"></span>
         <span>Italian</span> <span className="mx-2"></span>
         <span>Pizza</span> <span className="mx-2"></span>
+        {/* i have added the product name to be rendered on the product display section */}
         <span className="text-gray-900">{'inventoryItem?.name'}</span>
       </nav>
 
@@ -177,7 +178,9 @@ const ProductDetailPage = () => {
       {/* <InventoryInformationTab /> */}
 
       {/* <SimilarProducts /> */}
+      
     </div>
+    
   );
 };
 //===============================================================================================

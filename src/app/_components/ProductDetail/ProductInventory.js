@@ -54,6 +54,7 @@ export default function InventoryList({ inventoryItem }) {
       newSelected.add(itemId);
       setQuantities({ ...quantities, [itemId]: quantity });
       // Add item to cart when selected
+      console.log(item,quantity)
       addItemToCart(item, quantity);
     }
     setSelectedItems(newSelected);

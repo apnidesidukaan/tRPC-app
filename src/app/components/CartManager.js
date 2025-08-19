@@ -24,22 +24,25 @@ export const useCartManager = () => {
 
   // Function to add item to cart based on authentication status
   const addItemToCart = (inventory, qty) => {
-    if (session?.user) {
-
-      // User is authenticated, add to server cart
-      addItemToServerCart.mutate({
+          const data={
+        price:inventory.price,
+        name:inventory.name,
+        quantity:qty,
         inventoryId: inventory?.id,
-        quantity: qty,
-        name: inventory?.name,
-        price: inventory?.price,
-        // ... other required fields
-      });
+        // ..other requried fields will be here
+      }
+    if (session?.user) {
+      console.log(inventory)
+      console.log(data)
+      // User is authenticated, add to server cart
+      addItemToServerCart.mutate(
+        data
+      );
     } else {
       // User is not authenticated, save to localStorage
       const cartItem = {
-        inventoryId: inventoryId,
-        quantity: qty,
-        id: `${inventoryId}-${Date.now()}`, // Generate unique ID for localStorage
+        ...data,
+        id: `${data.inventoryId}-${Date.now()}`, // Generate unique ID for localStorage
         addedAt: new Date().toISOString(),
       };
       saveToLocalStorage(cartItem);

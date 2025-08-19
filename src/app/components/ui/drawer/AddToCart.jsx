@@ -6,6 +6,8 @@ import {
   FiClock, FiTruck, FiBox, FiTag
 } from "react-icons/fi";
 import CartItem from "../CartItem/drawer";
+import { useCartManager } from "~/app/components/CartManager";
+import { api } from '~/trpc/react';
 // import { useCart } from '../../../hooks/useCart';
 // import { useFetchInventoryItem } from '../../../controllers/inventory';
 // import httpClient from '../../../config/httpClient';
@@ -14,6 +16,19 @@ export default function CartDrawer({ isOpen, onClose }) {
   // const { cart, removeFromCart } = useCart();
   const [cartDetails, setCartDetails] = useState([]);
 
+  
+   const place=api.checkout.placeOrder.useMutation(
+     {
+       onSuccess: (data) => {
+         console.log('Order placed successfully:', data);
+       },
+       onError: (error) => {
+         console.error('Error placing order:', error);
+       },
+     }
+   );
+
+  const { getCartItems, addItemToCart } = useCartManager()
   // Fetch all inventory items directly via API
   // const fetchCartItems = async () => {
   //   try {
@@ -38,6 +53,17 @@ export default function CartDrawer({ isOpen, onClose }) {
   //   fetchCartItems();
   //   // else setCartDetails([]); // Clear when cart is empty
   // }, [isOpen]);
+
+
+  // ====================this is the logic to render the cart items in the drawer===========================
+  useEffect(() => {
+    // Fetch cart items when component mounts
+    const cartItems = getCartItems();
+    
+    setCartDetails(cartItems)
+    // console.log('Cart Items:', cartItems);
+  }, [getCartItems]);
+
 
   const totalMRP = cartDetails.reduce((sum, item) => sum + item.originalPrice * item.quantity, 0);
   const totalDiscounted = cartDetails.reduce(
@@ -148,6 +174,7 @@ export default function CartDrawer({ isOpen, onClose }) {
           </button>
         </div>
       </div>
+      <button onClick={() => place.mutate()}>Place Order</button>
     </div>
   );
 }

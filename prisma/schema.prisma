@@ -517,3 +517,126 @@ model BankAccountDetails {
     bankName          String?
     IFSC              String?
 }
+
+// --------- Enums ----------
+enum OrderStatus {
+  pending
+  confirmed
+  paid
+  fulfilled
+  shipped
+  delivered
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  pending
+  authorized
+  captured
+  failed
+  refunded
+  partially_refunded
+}
+
+enum PaymentMethod {
+  card
+  upi
+  cod
+  net_banking
+  wallet
+}
+
+// --------- Order Models ----------
+model Order {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderNo    Int      @unique @default(autoincrement()) // human-friendly number
+
+  // Who placed the order
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Delivery details
+  shippingAddress Address?
+
+  // Status
+  status        OrderStatus   @default(pending)
+  paymentStatus PaymentStatus @default(pending)
+
+  // Pricing
+  subtotal      Float
+  tax           Float      @default(0)
+  shippingFee   Float      @default(0)
+  discountTotal Float      @default(0)
+  total         Float
+
+  currency String @default("INR")
+
+  notes    String?
+  metadata Json?
+
+  placedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items    OrderItem[]
+  payments Payment[]
+  shipment Shipment?
+
+  @@index([userId, placedAt])
+  @@index([status, placedAt])
+}
+
+model OrderItem {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+
+  orderId String @db.ObjectId
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  inventoryId String    @db.ObjectId
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+
+  // Snapshot fields (preserve info even if Inventory changes)
+  name     String
+  sku      String?
+  quantity Int
+  price    Float // unit price
+  discount Float @default(0)
+  image    String?
+
+  total Float // line total
+}
+
+model Payment {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  orderId     String         @db.ObjectId
+  order       Order          @relation(fields: [orderId], references: [id])
+
+  method      PaymentMethod
+  status      PaymentStatus  @default(pending)
+  amount      Float
+  currency    String         @default("INR")
+
+  provider    String?        // Razorpay, Stripe, Paytm...
+  providerRef String?        @unique // txn id from provider
+  errorMsg    String?
+
+  createdAt DateTime @default(now())
+}
+
+model Shipment {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String        @db.ObjectId
+  order     Order         @relation(fields: [orderId], references: [id])
+
+  carrier        String?
+  trackingNumber String?  @unique
+  status         String   @default("pending") // you can enum-ify like ShipmentStatus
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+
+  toAddressSnapshot   Json?
+  fromAddressSnapshot Json?
+  notes               String?
+
+  createdAt DateTime @default(now())
+}
