@@ -8,7 +8,7 @@ interface item{
 export const orderRouter = createTRPCRouter({
   placeOrder: protectedProcedure.mutation(async({ctx,input}) =>{
     
-   const userId = ctx.session?.user?.id;
+   const userId = ctx.session.user.id;
       // 1. Get cart items
       const carts = await ctx.db.cart.findMany({
         where: { userId },
@@ -20,13 +20,13 @@ export const orderRouter = createTRPCRouter({
       console.log('Cart items:', cartItem);
       
 
-      if (cartItems.length === 0) {
+      if (cartItem.length === 0) {
         throw new Error("Cart is empty!");
       }
 
       // 2. Calculate total
-      const totalAmount = cartItems.reduce(
-        (sum: number, item: { product: { price: number }; quantity: number }) => sum + item.product.price * item.quantity,
+      const totalAmount = cartItem.reduce(
+        (sum, item) => sum + item.price * item.quantity,
         0
       );
 
@@ -34,13 +34,20 @@ export const orderRouter = createTRPCRouter({
       const order = await ctx.db.order.create({
         data: {
           userId,
-          totalAmount,
-          status: "PENDING", // Later update when payment confirmed
+          subtotal: totalAmount,
+          tax: 0,
+          shippingFee: 0,
+          discountTotal: 0,
+          total: totalAmount,
+          currency: "INR",
+          status: "pending", // Later update when payment confirmed
           items: {
-            create: cartItems.map((item) => ({
-              productId: item.productId,
+            create: cartItem.map((item) => ({
+              inventoryId: item.inventoryId,
+              name: item.name,
               quantity: item.quantity,
-              price: item.product.price,
+              price: item.price,
+              total: item.price * item.quantity,
             })),
           },
         },

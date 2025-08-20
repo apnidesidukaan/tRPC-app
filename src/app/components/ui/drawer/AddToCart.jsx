@@ -12,6 +12,21 @@ import { api } from '~/trpc/react';
 // import { useFetchInventoryItem } from '../../../controllers/inventory';
 // import httpClient from '../../../config/httpClient';
 
+// Razorpay script loading
+const loadRazorpay = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => {
+      resolve(true);
+    };
+    script.onerror = () => {
+      resolve(false);
+    };
+    document.body.appendChild(script);
+  });
+};
+
 export default function CartDrawer({ isOpen, onClose }) {
   // const { cart, removeFromCart } = useCart();
   const [cartDetails, setCartDetails] = useState([]);
@@ -63,6 +78,57 @@ export default function CartDrawer({ isOpen, onClose }) {
     setCartDetails(cartItems)
     // console.log('Cart Items:', cartItems);
   }, [getCartItems]);
+
+  // Razorpay payment handler
+  const handlePayment = async () => {
+    // Load Razorpay script
+    const res = await loadRazorpay();
+    if (!res) {
+      alert('Razorpay SDK failed to load. Are you online?');
+      return;
+    }
+
+    // Place order first to create order in database
+    try {
+      const orderData = await place.mutateAsync();
+      const orderId = orderData.orderId;
+
+      // Initialize Razorpay payment
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder', // Replace with your Razorpay key
+        amount: totalAmount * 100, // Razorpay expects amount in paise
+        currency: 'INR',
+        name: 'Apni Desi Dukaan',
+        description: 'Order Payment',
+        order_id: orderId, // This is the order id created in your backend
+        handler: function (response) {
+          // Payment successful
+          alert('Payment successful!');
+          console.log('Payment successful:', response);
+          // Close the cart drawer
+          onClose();
+        },
+        prefill: {
+          name: 'Customer Name',
+          email: 'customer@example.com',
+          contact: '9999999999',
+        },
+        notes: {
+          address: 'Corporate Office',
+        },
+        theme: {
+          color: '#3399cc',
+        },
+      };
+
+      // @ts-ignore
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error('Error placing order:', error);
+      alert('Error placing order. Please try again.');
+    }
+  };
 
 
   const totalMRP = cartDetails.reduce((sum, item) => sum + item.originalPrice * item.quantity, 0);
@@ -169,12 +235,14 @@ export default function CartDrawer({ isOpen, onClose }) {
           <div className="text-lg font-bold text-green-500">
             ₹{totalAmount} <span className="text-sm font-medium text-muted">TOTAL</span>
           </div>
-          <button className="bg-accent text-white px-6 py-2 rounded-lg font-semibold text-sm shadow-sm">
-            Login to Proceed →
+          <button
+            className="bg-accent text-white px-6 py-2 rounded-lg font-semibold text-sm shadow-sm"
+            onClick={handlePayment}
+          >
+            Proceed to Pay →
           </button>
         </div>
       </div>
-      <button onClick={() => place.mutate()}>Place Order</button>
     </div>
   );
 }
