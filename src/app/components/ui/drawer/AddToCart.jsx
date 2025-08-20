@@ -16,17 +16,17 @@ export default function CartDrawer({ isOpen, onClose }) {
   // const { cart, removeFromCart } = useCart();
   const [cartDetails, setCartDetails] = useState([]);
 
-  
-   const place=api.checkout.placeOrder.useMutation(
-     {
-       onSuccess: (data) => {
-         console.log('Order placed successfully:', data);
-       },
-       onError: (error) => {
-         console.error('Error placing order:', error);
-       },
-     }
-   );
+
+  const place = api.order.placeOrder.useMutation(
+    {
+      onSuccess: (data) => {
+        console.log('Order placed successfully:', data);
+      },
+      onError: (error) => {
+        console.error('Error placing order:', error);
+      },
+    }
+  );
 
   const { getCartItems, addItemToCart } = useCartManager()
   // Fetch all inventory items directly via API
@@ -59,7 +59,7 @@ export default function CartDrawer({ isOpen, onClose }) {
   useEffect(() => {
     // Fetch cart items when component mounts
     const cartItems = getCartItems();
-    
+
     setCartDetails(cartItems)
     // console.log('Cart Items:', cartItems);
   }, [getCartItems]);
