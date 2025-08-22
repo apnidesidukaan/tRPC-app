@@ -363,8 +363,10 @@ model Business {
     isActive  Boolean @default(true)
     isDeleted Boolean @default(false)
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    createdAt       DateTime          @default(now())
+    updatedAt       DateTime          @updatedAt
+    DeliveryPartner DeliveryPartner[]
+    Vendor          Vendor[]
 }
 
 enum BusinessType {
@@ -438,14 +440,18 @@ enum CartStatus {
 }
 
 model Role {
-    id          String   @id @default(auto()) @map("_id") @db.ObjectId
-    name        String   @unique
-    permissions String[] // list of assigned permissions
-    createdBy   String   @default("system")
-    isDeleted   Boolean  @default(false)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @updatedAt
-    User        User[]
+    id              String            @id @default(auto()) @map("_id") @db.ObjectId
+    name            String            @unique
+    permissions     String[] // list of assigned permissions
+    createdBy       String            @default("system")
+    isDeleted       Boolean           @default(false)
+    createdAt       DateTime          @default(now())
+    updatedAt       DateTime          @updatedAt
+    User            User[]
+    AreaManager     AreaManager[]
+    // User        User[]
+    DeliveryPartner DeliveryPartner[]
+    Vendor          Vendor[]
 }
 
 model User {
@@ -519,127 +525,371 @@ model BankAccountDetails {
     accountNumber     String?
     bankName          String?
     IFSC              String?
-}
-
-// --------- Enums ----------
-enum OrderStatus {
-    pending
-    confirmed
-    paid
-    fulfilled
-    shipped
-    delivered
-    cancelled
-    refunded
-}
-
-enum PaymentStatus {
-    pending
-    authorized
-    captured
-    failed
-    refunded
-    partially_refunded
-}
-
-enum PaymentMethod {
-    card
-    upi
-    cod
-    net_banking
-    wallet
+    DeliveryPartner   DeliveryPartner[]
+    Vendor            Vendor[]
 }
 
 // --------- Order Models ----------
 model Order {
     id      String @id @default(auto()) @map("_id") @db.ObjectId
-    orderNo Int    @unique
-    // Who placed the order
-    userId  String @db.ObjectId
-    user    User   @relation(fields: [userId], references: [id])
+    orderId String @unique
 
-    // Delivery details
-    shippingAddress Address? @relation(fields: [addressId], references: [id])
+    // 📦 Buyer & Vendor
+    customerId String @db.ObjectId
+    customer   User   @relation(fields: [customerId], references: [id])
+    vendorId   String @db.ObjectId
+    vendor     Vendor @relation(fields: [vendorId], references: [id])
 
-    // Status
-    status        OrderStatus   @default(pending)
+    // 🛒 Items
+    items          OrderItem[]
+    addressId      String      @db.ObjectId
+    address        Address     @relation(fields: [addressId], references: [id])
+    totalQuantity  Int?
+    subtotalAmount Float?
+    taxes          Float?      @default(0)
+    discounts      Float?      @default(0)
+    deliveryCharge Float?      @default(0)
+    surcharge      Float?      @default(0)
+    grandTotal     Float?
+
+    // 🚚 Delivery Info
+    deliveryMode    DeliveryMode      @default(delivery)
+    deliveryAddress DeliveryAddress[]
+    deliveryStatus  DeliveryStatus[]
+
+    // 📊 Order Status
+    orderStatus   OrderStatus     @default(preparing)
+    statusHistory StatusHistory[]
+
+    // 💰 Payment Info
+    paymentMethod PaymentMethod @default(cod)
     paymentStatus PaymentStatus @default(pending)
+    transactionId String?
 
-    // Pricing
-    subtotal      Float
-    tax           Float @default(0)
-    shippingFee   Float @default(0)
-    discountTotal Float @default(0)
-    total         Float
+    razorpay_order_id   String?
+    razorpay_payment_id String?
+    razorpay_signature  String?
 
-    currency String @default("INR")
+    // 🔁 Flags & Logic
+    isScheduled        Boolean   @default(false)
+    scheduledFor       DateTime?
+    isCancelled        Boolean   @default(false)
+    cancellationReason String?
 
-    notes    String?
-    metadata Json?
+    // 🧠 Feedback
+    feedback Feedback[]
 
-    placedAt  DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    // ⏱️ Timestamps
+    createdAt   DateTime  @default(now())
+    confirmedAt DateTime?
+    pickedAt    DateTime?
+    deliveredAt DateTime?
+    cancelledAt DateTime?
 
-    items     OrderItem[]
-    payments  Payment[]
-    shipment  Shipment[]
-    addressId String?     @db.ObjectId
-
-    @@index([userId, placedAt])
-    @@index([status, placedAt])
+    // 🔐 Meta
+    source             Source @default(app)
+    platformFee        Float?
+    deliveryPartnerFee Float?
+    extraMeta          Json?
 }
 
 model OrderItem {
-    id String @id @default(auto()) @map("_id") @db.ObjectId
+    id        String    @id @default(auto()) @map("_id") @db.ObjectId
+    orderId   String    @db.ObjectId
+    order     Order     @relation(fields: [orderId], references: [id])
+    productId String    @db.ObjectId
+    product   Inventory @relation(fields: [productId], references: [id])
+    name      String?
+    variant   String?
+    quantity  Int
+    price     Float
+    subtotal  Float
+}
 
-    orderId String @db.ObjectId
-    order   Order  @relation(fields: [orderId], references: [id])
+model DeliveryAddress {
+    id          String  @id @default(auto()) @map("_id") @db.ObjectId
+    orderId     String  @db.ObjectId
+    order       Order   @relation(fields: [orderId], references: [id])
+    name        String?
+    phone       String?
+    addressLine String?
+    locality    String?
+    city        String?
+    state       String?
+    pincode     String?
+    lat         Float?
+    lng         Float?
+}
 
-    inventoryId String    @db.ObjectId
-    inventory   Inventory @relation(fields: [inventoryId], references: [id])
+model DeliveryStatus {
+    id            String             @id @default(auto()) @map("_id") @db.ObjectId
+    orderId       String             @db.ObjectId
+    order         Order              @relation(fields: [orderId], references: [id])
+    assignedToId  String?            @db.ObjectId
+    assignedTo    DeliveryPartner?   @relation(fields: [assignedToId], references: [id])
+    status        DeliveryStatusEnum @default(not_assigned)
+    currentLat    Float?
+    currentLng    Float?
+    estimatedTime String?
+}
 
-    // Snapshot fields (preserve info even if Inventory changes)
+model StatusHistory {
+    id            String        @id @default(auto()) @map("_id") @db.ObjectId
+    orderId       String        @db.ObjectId
+    order         Order         @relation(fields: [orderId], references: [id])
+    status        String
+    timestamp     DateTime
+    remarks       String?
+    updatedById   String?       @db.ObjectId
+    updatedByRole UpdatedByRole
+}
+
+model Feedback {
+    id         String    @id @default(auto()) @map("_id") @db.ObjectId
+    orderId    String    @db.ObjectId
+    order      Order     @relation(fields: [orderId], references: [id])
+    rating     Int?
+    comment    String?
+    reviewedAt DateTime?
+}
+
+// ================= ORDER ENUMS =================
+enum DeliveryMode {
+    delivery
+    pickup
+}
+
+enum DeliveryStatusEnum {
+    not_assigned
+    assigned
+    picked
+    on_route
+    delivered
+}
+
+enum OrderStatus {
+    created
+    confirmed
+    preparing
+    ready
+    assigned
+    arrived_at_pickup
+    out_for_delivery
+    delivered
+    cancelled
+}
+
+enum PaymentMethod {
+    cod
+    upi
+    card
+    wallet
+}
+
+enum PaymentStatus {
+    pending
+    paid
+    failed
+    refunded
+}
+
+enum Source {
+    web
+    app
+    pwa
+}
+
+enum UpdatedByRole {
+    User
+    Vendor
+    DeliveryAgent
+    System
+}
+
+//============================= model delivery partner=====================
+model DeliveryPartner {
+    id       String @id @default(auto()) @map("_id") @db.ObjectId
     name     String
-    sku      String?
-    quantity Int
-    price    Float // unit price
-    discount Float   @default(0)
-    image    String?
+    mobile   String @unique
+    email    String @unique
+    password String
 
-    total Float // line total
+    dob    DateTime?
+    gender Gender
+
+    // Relations
+    addresses   DeliveryPartnerAddress[]
+    bankDetails BankAccountDetails?      @relation(fields: [bankAccountDetailsId], references: [id])
+    businessId  String?                  @db.ObjectId
+    business    Business?                @relation(fields: [businessId], references: [id])
+    roleId      String                   @db.ObjectId
+    role        Role                     @relation(fields: [roleId], references: [id])
+
+    fcmToken     String?
+    UPIid        String?
+    referralCode String? @unique
+
+    agreementCheck Boolean
+    vehicleType    String?
+
+    isVerified Boolean @default(false)
+    isActive   Boolean @default(true)
+    isDeleted  Boolean @default(false)
+
+    createdAt            DateTime         @default(now())
+    updatedAt            DateTime         @updatedAt
+    DeliveryStatus       DeliveryStatus[]
+    bankAccountDetailsId String?          @db.ObjectId
 }
 
-model Payment {
-    id      String @id @default(auto()) @map("_id") @db.ObjectId
-    orderId String @db.ObjectId
-    order   Order  @relation(fields: [orderId], references: [id])
+model DeliveryPartnerAddress {
+    id                String          @id @default(auto()) @map("_id") @db.ObjectId
+    deliveryPartnerId String          @db.ObjectId
+    deliveryPartner   DeliveryPartner @relation(fields: [deliveryPartnerId], references: [id])
 
-    method   PaymentMethod
-    status   PaymentStatus @default(pending)
-    amount   Float
-    currency String        @default("INR")
-
-    provider    String? // Razorpay, Stripe, Paytm...
-    providerRef String? @unique // txn id from provider
-    errorMsg    String?
-
-    createdAt DateTime @default(now())
+    label        String? @default("Home")
+    street       String?
+    landmark     String?
+    area         String?
+    city         String?
+    state        String?
+    country      String?
+    zipCode      String?
+    lat          Float?
+    lng          Float?
+    contactName  String?
+    contactPhone String?
+    isDefault    Boolean @default(false)
 }
 
-model Shipment {
-    id      String @id @default(auto()) @map("_id") @db.ObjectId
-    orderId String @db.ObjectId
-    order   Order  @relation(fields: [orderId], references: [id])
+// ===================================== Venodr model ============================================
+model Vendor {
+    id       String  @id @default(auto()) @map("_id") @db.ObjectId
+    name     String
+    mobile   String  @unique
+    email    String  @unique
+    password String?
 
-    carrier        String?
-    trackingNumber String?   @unique
-    status         String    @default("pending") // you can enum-ify like ShipmentStatus
-    shippedAt      DateTime?
-    deliveredAt    DateTime?
+    dob    DateTime?
+    gender Gender    @default(other)
 
-    toAddressSnapshot   Json?
-    fromAddressSnapshot Json?
-    notes               String?
+    // Address
+    addressStreet  String?
+    addressCity    String?
+    addressState   String?
+    addressCountry String?
+    addressZipCode String?
+    addressLat     Float?
+    addressLng     Float?
 
-    createdAt DateTime @default(now())
+    // Bank Account
+    bankAccount BankAccountDetails @relation(fields: [bankAccountDetailsId], references: [id])
+    orders      Order[]
+    UPIid       String?
+
+    vendorType       VendorType
+    onboardingStatus OnboardingStatus @default(profile_created)
+
+    areaManagerId String?      @db.ObjectId
+    areaManager   AreaManager? @relation(fields: [areaManagerId], references: [id])
+
+    referralCode   String? @unique
+    agreementCheck Boolean
+
+    businessId String?   @db.ObjectId
+    business   Business? @relation(fields: [businessId], references: [id])
+
+    roleId String @db.ObjectId
+    role   Role   @relation(fields: [roleId], references: [id])
+
+    isVerified Boolean @default(false)
+    isActive   Boolean @default(true)
+    isDeleted  Boolean @default(false)
+
+    documents   VendorDocument[]
+    locationLat Float?
+    locationLng Float?
+
+    lastLoginAt DateTime?
+    deviceInfo  DeviceInfo? @relation(fields: [deviceInfoId], references: [id])
+
+    createdAt            DateTime @default(now())
+    updatedAt            DateTime @updatedAt
+    bankAccountDetailsId String   @db.ObjectId
+    deviceInfoId         String?  @db.ObjectId
+}
+
+model VendorDocument {
+    id       String @id @default(auto()) @map("_id") @db.ObjectId
+    vendorId String @db.ObjectId
+    vendor   Vendor @relation(fields: [vendorId], references: [id])
+
+    type     String
+    fileUrl  String
+    verified Boolean @default(false)
+}
+
+model DeviceInfo {
+    id         String   @id @default(auto()) @map("_id") @db.ObjectId
+    vendorId   String   @db.ObjectId
+    vendor     Vendor[]
+    os         String?
+    appVersion String?
+    fcmToken   String?
+}
+
+// ================= ENUMS =================
+
+enum VendorType {
+    retailer_product
+    retailer_service
+}
+
+enum OnboardingStatus {
+    profile_created
+    inventory_pending
+    under_review
+    approved
+    rejected
+}
+
+// ======================================= area manager model =================================
+model AreaManager {
+    id              String   @id @default(auto()) @map("_id") @db.ObjectId
+    fullName        String
+    phoneNumber     String   @unique
+    email           String   @unique
+    roleId          String?  @db.ObjectId
+    role            Role?    @relation(fields: [roleId], references: [id])
+    password        String
+    assignedRegions String[] // array of strings
+
+    employeeCode String? @unique
+    isActive     Boolean @default(true)
+
+    // documents
+    idProofUrl      String @default("")
+    addressProofUrl String @default("")
+
+    // ✅ GeoJSON Polygon (using Json for flexibility)
+    location Json
+
+    createdAt    DateTime  @default(now())
+    verified     Boolean   @default(false)
+    verifiedAt   DateTime?
+    verifiedById String?   @db.ObjectId
+    verifiedBy   Admin?    @relation(fields: [verifiedById], references: [id])
+
+    updatedAt DateTime @updatedAt
+    Vendor    Vendor[]
+    // Admin     Admin?   @relation(fields: [adminId], references: [id])
+    adminId   String?  @db.ObjectId
+}
+
+model Admin {
+    id          String        @id @default(auto()) @map("_id") @db.ObjectId
+    email       String        @unique
+    password    String
+    // verifiedAreaManagers AreaManager[] @relation("AdminToAreaManager")
+    AreaManager AreaManager[]
 }

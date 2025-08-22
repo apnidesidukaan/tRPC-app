@@ -69,10 +69,8 @@ export const orderRouter = createTRPCRouter({
           orderNo
         },
       });
-      // first clear the cart items in the cart then the cart
-      await ctx.db.cartItem.deleteMany({ where: { cartId: { in: carts.map(({id})=> id) } } });
-      // 4. Clear cart after checkout
-      await ctx.db.cart.deleteMany({ where: { userId } });
+      // first clear the cart items in the cart once the order has been placed
+      ctx.db.cartItem.deleteMany({ where: { cartId: { in: carts.map(({id})=> id) } } });
 
       return { success: true, orderId: order.id };
     } catch (err) {
