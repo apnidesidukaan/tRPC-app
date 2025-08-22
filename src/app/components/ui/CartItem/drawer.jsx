@@ -2,7 +2,7 @@ import React from 'react'
 // this will be used to render the item in the cart drawer
 export default function drawer({ item }) {
   // console.log('Cart Item:eeeeeeeee', item);
-  console.log(item)
+  // console.log(item)
 
   return (
     <div key={item.id} className="flex gap-3 border p-3 rounded-xl shadow-sm bg-gray-50">

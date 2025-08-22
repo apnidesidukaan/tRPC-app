@@ -348,9 +348,8 @@ model Module {
     // Store     Store?     @relation(fields: [storeId], references: [id])
     storeId   String?    @db.ObjectId
     Store     Store?     @relation(fields: [storeId], references: [id])
-    // Store     Store?     @relation(fields: [storeId], references: [id])
-    Lead      Lead?      @relation(fields: [leadId], references: [id])
-    leadId    String?    @db.ObjectId
+    leads     Lead[]     @relation("LeadModules")
+    // leadId    String?    @db.ObjectId
 }
 
 model Business {
@@ -1201,12 +1200,16 @@ model Lead {
     comments       String?
     details        LeadDetails?
     documents      LeadDocument[]
-    modules        Module[]
-    createdAt      DateTime       @default(now())
-    updatedAt      DateTime       @updatedAt
+    modules        Module[]       @relation("LeadModules") // FIX: relation name here
+    // modulesId    String?    @db.ObjectId
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
     // relation
     assignedTo User? @relation(fields: [assignedToId], references: [id])
+    // Module     Module[]
+    // Module     Module[]
 
     @@map("leads")
 }

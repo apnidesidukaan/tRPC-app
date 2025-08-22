@@ -20,7 +20,7 @@ const HeroSection = () => {
 
     const { data: modules, isLoading } = api.module.getAll.useQuery();
 
-    // console.log("modules ========", modules);
+    console.log("modules ========", modules);
 
 
 

@@ -36,6 +36,16 @@ const VendorOnboardingPage = () => {
   // Fetch modules for service and retail categories
   const { data: modules, } = api.module.getAll.useQuery();
 
+
+  const utils = api.useUtils();
+  const createLeadMutation = api.lead.create.useMutation({
+    onSuccess: async () => {
+      await utils.inventory.getAll.invalidate();
+      // router.refresh();
+    },
+  });
+
+
   // const { modules: fetchedRetailModules, refetchModules: refetchRetail } = useModules('689722bba4062e831546e710');
   // const { modules: fetchedServiceModules, refetchModules: refetchService } = useModules('6861013af904715ba00ffe08');
 
@@ -107,7 +117,6 @@ const VendorOnboardingPage = () => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage('');
-
     // Basic validation for step 3 before submitting
     if (!formData.businessName || !formData.address) {
       setErrorMessage('Please fill in all business details fields.');
@@ -131,8 +140,13 @@ const VendorOnboardingPage = () => {
         companyName: formData.businessName,
         modules: formData.modules, // Correctly sends the array of selected module IDs
       };
-      const { success, error: vendorError, successMessage } = await createNewLead(vendorData);
-      if (success) {
+      console.log('vendorData to submit', vendorData);
+
+      // createLeadMutation()
+      const res = await createLeadMutation.mutateAsync(vendorData);
+      // console.log(';res', res);
+
+      if (res.status === 201) {
         setSuccessMessage(successMessage || 'Lead created successfully');
         setFormData({
           name: '',
@@ -184,8 +198,8 @@ const VendorOnboardingPage = () => {
 
     // If you want to select modules based on the selected `vendorType`, you would filter `fetchedServiceModules` or `fetchedRetailModules`
     // based on the `formData.vendorType` ID.
-    const relevantModules = modules ;
-console.log('relevantModules', relevantModules);
+    const relevantModules = modules;
+    // console.log('relevantModules', relevantModules);
 
 
     return (
@@ -239,10 +253,10 @@ console.log('relevantModules', relevantModules);
                 {modules?.length > 0 ? (
                   modules?.map((type) => (
                     <button
-                      key={type._id}
+                      key={type.id}
                       type="button"
-                      onClick={() => handleModuleSelection(type._id)}
-                      className={`bg-gradient-to-r from-[#ffdd8d] via-[#f1cf83] to-[#e3bf70] p-6 text-[#395953] rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${formData?.modules?.includes(type._id)
+                      onClick={() => handleModuleSelection(type.id)}
+                      className={`bg-gradient-to-r from-[#ffdd8d] via-[#f1cf83] to-[#e3bf70] p-6 text-[#395953] rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${formData?.modules?.includes(type.id)
                         ? 'border-[#3d2701] bg-[#3d2701] shadow-lg ring-2 ring-[#3d2701]'
                         : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
                         }`}
@@ -255,7 +269,7 @@ console.log('relevantModules', relevantModules);
                         />
                       ) : (
                         <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${type.color || 'from-gray-300 to-gray-500'} flex items-center justify-center text-2xl mb-4 mx-auto`}>
-                          {}
+                          { }
                         </div>
                       )}
                       <h4 className="font-semibold text-[#3d2701] text-sm text-center">{type.name}</h4>
