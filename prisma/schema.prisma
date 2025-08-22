@@ -317,7 +317,11 @@ model Category {
     // inventories Inventory[] // relation to Inventory model
     moduleId  String      @db.ObjectId
 
-    Module Module @relation(fields: [moduleId], references: [id])
+    Module  Module  @relation(fields: [moduleId], references: [id])
+    storeId String? @db.ObjectId
+    Store   Store?  @relation(fields: [storeId], references: [id])
+    // Store   Store?  @relation(fields: [storeId], references: [id])
+    // Store   Store?  @relation(fields: [storeId], references: [id])
 }
 
 model Module {
@@ -341,6 +345,12 @@ model Module {
     updatedAt DateTime   @updatedAt
     // Inventory Inventory[]
     Category  Category[]
+    // Store     Store?     @relation(fields: [storeId], references: [id])
+    storeId   String?    @db.ObjectId
+    Store     Store?     @relation(fields: [storeId], references: [id])
+    // Store     Store?     @relation(fields: [storeId], references: [id])
+    Lead      Lead?      @relation(fields: [leadId], references: [id])
+    leadId    String?    @db.ObjectId
 }
 
 model Business {
@@ -482,9 +492,12 @@ model User {
     isActive   Boolean @default(true)
     isDeleted  Boolean @default(false)
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    Order     Order[]
+    createdAt    DateTime       @default(now())
+    updatedAt    DateTime       @updatedAt
+    Order        Order[]
+    Subscription Subscription[]
+    AuditLog     AuditLog[]
+    Lead         Lead[]
 }
 
 enum Gender {
@@ -817,6 +830,7 @@ model Vendor {
     updatedAt            DateTime @updatedAt
     bankAccountDetailsId String   @db.ObjectId
     deviceInfoId         String?  @db.ObjectId
+    Store                Store[]
 }
 
 model VendorDocument {
@@ -892,4 +906,363 @@ model Admin {
     password    String
     // verifiedAreaManagers AreaManager[] @relation("AdminToAreaManager")
     AreaManager AreaManager[]
+}
+
+model Trip {
+    id            String  @id @default(auto()) @map("_id") @db.ObjectId
+    tripId        String  @unique
+    customer      String? @map("customer") @db.ObjectId // references User
+    deliveryAgent String? @map("deliveryAgent") @db.ObjectId // references deliveryPartner
+    order         String? @map("order") @db.ObjectId // references Order
+
+    status TripStatus @default(created)
+
+    pickupLocation   PickupLocation?
+    deliveryLocation DeliveryLocation?
+
+    currentLocation CurrentLocation?
+
+    routePath RoutePath[]
+
+    assignedAt        DateTime?
+    acceptedAt        DateTime?
+    pickupStartedAt   DateTime?
+    pickedUpAt        DateTime?
+    deliveryStartedAt DateTime?
+    deliveredAt       DateTime?
+    cancelledAt       DateTime?
+
+    estimatedDistanceKm  Float?
+    actualDistanceKm     Float?
+    estimatedDurationMin Float?
+    actualDurationMin    Float?
+
+    fare Fare?
+
+    meta Meta?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+enum TripStatus {
+    created
+    assigned
+    accepted
+    en_route_to_pickup
+    arrived_at_pickup
+    picked_up
+    en_route_to_delivery
+    delivered
+    cancelled
+}
+
+type PickupLocation {
+    lat     Float?
+    lng     Float?
+    address String?
+}
+
+type DeliveryLocation {
+    lat     Float?
+    lng     Float?
+    address String?
+}
+
+type CurrentLocation {
+    lat       Float?
+    lng       Float?
+    updatedAt DateTime?
+}
+
+type RoutePath {
+    lat       Float?
+    lng       Float?
+    timestamp DateTime?
+}
+
+type Fare {
+    baseFare             Float?
+    distanceFare         Float?
+    timeFare             Float?
+    nightSurcharge       Float?
+    platformFee          Float?
+    deliveryPartnerShare Float?
+    totalPayable         Float?
+}
+
+type Meta {
+    cancelledBy CancelledBy @default(nullVal)
+    reason      String?
+    notes       String?
+}
+
+enum CancelledBy {
+    vendor
+    customer
+    delivery_agent
+    system
+    nullVal
+}
+
+model Transaction {
+    id           String          @id @default(auto()) @map("_id") @db.ObjectId
+    type         TransactionType
+    amount       Float
+    balanceAfter Float
+    sourceType   SourceType
+    sourceRef    String?         @db.ObjectId
+    description  String?
+    performedBy  String?         @db.ObjectId
+    walletId     String          @db.ObjectId
+    wallet       Wallet          @relation(fields: [walletId], references: [id])
+    createdAt    DateTime        @default(now())
+    updatedAt    DateTime        @updatedAt
+}
+
+model Wallet {
+    id           String        @id @default(auto()) @map("_id") @db.ObjectId
+    userId       String        @unique @db.ObjectId
+    userModel    UserRole
+    balance      Float         @default(0)
+    lockedAmount Float         @default(0)
+    updatedAt    DateTime      @default(now())
+    createdAt    DateTime      @default(now())
+    Transaction  Transaction[]
+
+    @@map("wallets")
+}
+
+enum UserRole {
+    customer
+    vendor
+    deliveryAgent
+    areaManager
+}
+
+enum TransactionType {
+    credit
+    debit
+}
+
+enum SourceType {
+    order
+    refund
+    bonus
+    withdrawal
+    adjustment
+    payout
+}
+
+model Store {
+    id       String @id @default(auto()) @map("_id") @db.ObjectId
+    vendorId String @db.ObjectId
+    vendor   Vendor @relation(fields: [vendorId], references: [id])
+
+    name String
+
+    // Store images (JSON object in Mongo)
+    storeImage StoreImage?
+
+    // Relations
+    // modules            Module[]   @relation("StoreModules")
+    // promotedCategories Category[] @relation("StorePromotedCategories")
+
+    // Address as embedded type
+    address StoreAddress?
+
+    mobile String @unique
+
+    operating_hours OperatingHours?
+    status          StoreStatus?
+    bank_details    BankDetails?
+    kyc             Kyc?
+
+    profile_completion Int @default(0)
+    inventory_count    Int @default(0)
+    order_count        Int @default(0)
+
+    ratings Ratings?
+
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
+    Category  Category[]
+    Module    Module[]
+}
+
+//////////////////// Nested Embedded Types ////////////////////
+
+type StoreImage {
+    topImg    String?
+    middleImg String?
+    latImg    String?
+}
+
+type StoreAddress {
+    street   String?
+    locality String?
+    city     String?
+    state    String?
+    pincode  String?
+    geo      Geo?
+}
+
+type Geo {
+    lat Float?
+    lng Float?
+}
+
+type OperatingHours {
+    open  String? @default("09:00") // HH:mm
+    close String? @default("21:00")
+}
+
+type StoreStatus {
+    isOpen      Boolean? @default(true)
+    lastUpdated DateTime @default(now())
+}
+
+type BankDetails {
+    account_holder String?
+    account_number String?
+    ifsc           String?
+    upi_id         String?
+}
+
+type Kyc {
+    gst_number String?
+    documents  String[] // Array of URLs
+    verified   Boolean? @default(false)
+}
+
+type Ratings {
+    average       Float? @default(0)
+    total_reviews Int?   @default(0)
+}
+
+enum SubscriptionStatus {
+    active
+    cancelled
+    expired
+}
+
+model Subscription {
+    id        String             @id @default(auto()) @map("_id") @db.ObjectId
+    userId    String             @db.ObjectId
+    planId    String             @db.ObjectId
+    status    SubscriptionStatus @default(active)
+    startedAt DateTime           @default(now())
+    expiresAt DateTime?
+
+    // relations
+    user User             @relation(fields: [userId], references: [id])
+    plan SubscriptionPlan @relation(fields: [planId], references: [id])
+}
+
+model SubscriptionPlan {
+    id           String @id @default(auto()) @map("_id") @db.ObjectId
+    name         String @unique
+    price        Float
+    durationDays Int
+
+    // relations
+    subscriptions Subscription[]
+}
+
+model AuditLog {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId    String?  @db.ObjectId
+    action    String
+    details   String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    // relation to User (optional, since user can be null)
+    user User? @relation(fields: [userId], references: [id])
+
+    @@map("auditlogs")
+}
+
+model Lead {
+    id             String         @id @default(auto()) @map("_id") @db.ObjectId
+    leadType       LeadType
+    name           String
+    email          String
+    phone          String
+    companyName    String? // only required if leadType = vendor (Prisma can't enforce conditional required, so nullable here)
+    address        String?
+    drivingLicense String?
+    aadharNumber   String?
+    panNumber      String?
+    region         Region?
+    source         LeadSource
+    status         LeadStatus     @default(new)
+    assignedToId   String?        @db.ObjectId
+    comments       String?
+    details        LeadDetails?
+    documents      LeadDocument[]
+    modules        Module[]
+    createdAt      DateTime       @default(now())
+    updatedAt      DateTime       @updatedAt
+
+    // relation
+    assignedTo User? @relation(fields: [assignedToId], references: [id])
+
+    @@map("leads")
+}
+
+model LeadDocument {
+    id     String @id @default(auto()) @map("_id") @db.ObjectId
+    name   String
+    link   String
+    leadId String @db.ObjectId
+
+    lead Lead @relation(fields: [leadId], references: [id])
+
+    @@map("lead_documents")
+}
+
+type LeadDetails {
+    businessType  BusinessType?
+    bankAccount   String?
+    taxId         String?
+    vehicleType   String?
+    licenseNumber String?
+    capacity      String?
+}
+
+/// ENUMS
+
+enum LeadType {
+    vendor
+    delivery_agent
+    partner
+    client
+    customer
+}
+
+enum Region {
+    north
+    south
+    east
+    west
+}
+
+enum LeadSource {
+    web
+    facebook
+    google
+    organic
+    referral
+    ads
+    other
+}
+
+enum LeadStatus {
+    new
+    contacted
+    qualified
+    approved
+    rejected
+    onboarding
 }
