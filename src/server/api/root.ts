@@ -8,7 +8,7 @@ import { categoryRouter } from "./routers/categoryModule";
 import { cartRouter } from "./routers/cart";
 import { userRouter } from "./routers/user";
 import { roleRouter } from "./routers/role";
-import { checkoutRouter, orderRouter } from "./routers/order";
+import { orderRouter } from "./routers/order";
 import { leadRouter } from "./routers/lead";
 
 /**

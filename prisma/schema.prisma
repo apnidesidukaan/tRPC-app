@@ -341,15 +341,15 @@ model Module {
 
     createdBy String? // optional
 
-    createdAt DateTime   @default(now())
-    updatedAt DateTime   @updatedAt
+    createdAt DateTime     @default(now())
+    updatedAt DateTime     @updatedAt
     // Inventory Inventory[]
     Category  Category[]
     // Store     Store?     @relation(fields: [storeId], references: [id])
-    storeId   String?    @db.ObjectId
-    Store     Store?     @relation(fields: [storeId], references: [id])
-    leads     Lead[]     @relation("LeadModules")
-    // leadId    String?    @db.ObjectId
+    storeId   String?      @db.ObjectId
+    Store     Store?       @relation(fields: [storeId], references: [id])
+    // Many-to-many with Lead
+    leads     LeadModule[] // ✅ reverse relation
 }
 
 model Business {
@@ -496,7 +496,7 @@ model User {
     Order        Order[]
     Subscription Subscription[]
     AuditLog     AuditLog[]
-    Lead         Lead[]
+    // Lead         Lead[]
 }
 
 enum Gender {
@@ -1199,31 +1199,38 @@ model Lead {
     assignedToId   String?        @db.ObjectId
     comments       String?
     details        LeadDetails?
-    documents      LeadDocument[]
-    modules        Module[]       @relation("LeadModules") // FIX: relation name here
-    // modulesId    String?    @db.ObjectId
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    // documents      LeadDocument[]
+    modules        LeadModule[] // ✅ references join collection
+    createdAt      DateTime       @default(now())
+    updatedAt      DateTime       @updatedAt
 
     // relation
-    assignedTo User? @relation(fields: [assignedToId], references: [id])
+    // assignedTo User? @relation(fields: [assignedToId], references: [id])
     // Module     Module[]
     // Module     Module[]
 
-    @@map("leads")
+    // @@map("leads")
 }
 
-model LeadDocument {
-    id     String @id @default(auto()) @map("_id") @db.ObjectId
-    name   String
-    link   String
-    leadId String @db.ObjectId
+model LeadModule {
+    id       String @id @default(auto()) @map("_id") @db.ObjectId
+    leadId   String @db.ObjectId
+    moduleId String @db.ObjectId
 
-    lead Lead @relation(fields: [leadId], references: [id])
-
-    @@map("lead_documents")
+    lead   Lead   @relation(fields: [leadId], references: [id])
+    module Module @relation(fields: [moduleId], references: [id])
 }
+
+// model LeadDocument {
+//     id     String @id @default(auto()) @map("_id") @db.ObjectId
+//     name   String
+//     link   String
+//     leadId String @db.ObjectId
+
+//     lead Lead @relation(fields: [leadId], references: [id])
+
+//     @@map("lead_documents")
+// }
 
 type LeadDetails {
     businessType  BusinessType?

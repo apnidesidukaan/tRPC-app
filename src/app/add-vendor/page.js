@@ -35,6 +35,7 @@ const VendorOnboardingPage = () => {
 
   // Fetch modules for service and retail categories
   const { data: modules, } = api.module.getAll.useQuery();
+  // console.log(modules);
 
 
   const utils = api.useUtils();

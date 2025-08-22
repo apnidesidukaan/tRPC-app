@@ -20,14 +20,24 @@ import {
   FaCar, // Car
   FaHashtag // Hash
 } from 'react-icons/fa'; // Using Font Awesome icons as a common choice
-import { useConvertLeadToVendor, useLeads } from "../../../../../controllers/leads";
+// import { useConvertLeadToVendor, useLeads } from "../../../../../controllers/leads";
 import SuccessBadge from "../../../status/SuccessBadge";
 import ErrorBadge from "../../../status/ErrorBadge";
 import ConfirmationDialogueBox from "../../../status/Confirmation";
+import { api } from '~/trpc/react';
 
 const LeadDetailModal = ({ rowData, isModalOpen, setIsModalOpen }) => {
-  const { convertLead, } = useConvertLeadToVendor()
-  const { refreshLeads } = useLeads()
+  const leads = api.lead.getAll.useQuery()
+
+
+  // const convertLeadMutation = api.lead.getAll.useMutation({
+  //   onSuccess: () => {
+  //     leads.refetch(); // Refetch leads after successful deletion 
+  //   },
+  // });
+
+  // const { convertLead, } = useConvertLeadToVendor()
+  // const { refreshLeads } = useLeads()
 
   const [apiResponse, setApiResponse] = useState(''); // Success pop-up state
   const [isLoading, setIsLoading] = useState(false)
@@ -180,7 +190,7 @@ const LeadDetailModal = ({ rowData, isModalOpen, setIsModalOpen }) => {
     { id: 'details', label: 'Details', icon: FaFileAlt },
     { id: 'modules', label: 'Modules', icon: FaBriefcase },
     { id: 'documents', label: 'Documents', icon: FaBriefcase },
-];
+  ];
 
   return (
     <div

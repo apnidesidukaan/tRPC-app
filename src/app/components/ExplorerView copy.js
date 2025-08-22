@@ -14,12 +14,11 @@ import UserTable from "./ui/tables/modernTable/component/Table-user";
 import { moduleIcons, categoryIcons, statusIcons, commonIcons } from '../components/ui/tables/modernTable/constants/icons'; // Adjust path
 import VendorsTable from "./ui/tables/modernTable/component/Table-vendor";
 import DeliveryPartnerTable from "./ui/tables/modernTable/component/Table-dp";
-import { api } from "~/trpc/react";
 
 export default function ExplorerView({
     headerTitle,
     headerIcon,
-    // data,
+    data,
     columns,
     tableType,
 
@@ -30,10 +29,6 @@ export default function ExplorerView({
 }) {
 
 
-
-    const {data :data} = api.lead.getAllLeads.useQuery();
-
-    // console.log('api.lead', leads);
 
     // State for dataArray data
     const [dataArray, setDataArray] = useState([]);
