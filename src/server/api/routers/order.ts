@@ -1,25 +1,28 @@
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
- 
+import Razorpay from "razorpay";
 
+interface item {}
 
-interface item{
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_SECRET!,
+})
 
-}
 export const orderRouter = createTRPCRouter({
   placeOrder: protectedProcedure.mutation(async({ctx,input}) =>{
-    
-   const userId = ctx.session.user.id;
+    try {
+      const userId = ctx.session.user.id;
+
       // 1. Get cart items
       const carts = await ctx.db.cart.findMany({
         where: { userId },
       });
-
+      
+      console.log("executed")
       const cartItem=await ctx.db.cartItem.findMany({
         where: { cartId: { in: carts.map(({id})=> id) } },
       });
-      console.log('Cart items:', cartItem);
-      
-
+        
       if (cartItem.length === 0) {
         throw new Error("Cart is empty!");
       }
@@ -29,13 +32,26 @@ export const orderRouter = createTRPCRouter({
         (sum, item) => sum + item.price * item.quantity,
         0
       );
+      
+      console.log(typeof totalAmount)
 
+      // money should be in paise 
+      let amountInPaise = Math.round(totalAmount * 100)
+      
+      const razorpayOrder = await razorpay.orders.create({
+        amount: amountInPaise, // in paise
+        currency: "INR",
+        receipt: "receipt_" + Date.now(), // optional, for your own tracking
+      });
+      console.log(razorpayOrder)
+      const orderNo = parseInt(razorpayOrder.id, 16);
       // 3. Create order
       const order = await ctx.db.order.create({
         data: {
-          userId,
+       
           subtotal: totalAmount,
           tax: 0,
+          user:ctx.session.user,
           shippingFee: 0,
           discountTotal: 0,
           total: totalAmount,
@@ -50,6 +66,7 @@ export const orderRouter = createTRPCRouter({
               total: item.price * item.quantity,
             })),
           },
+          orderNo
         },
       });
 
@@ -57,9 +74,12 @@ export const orderRouter = createTRPCRouter({
       await ctx.db.cart.deleteMany({ where: { userId } });
 
       return { success: true, orderId: order.id };
-
+    } catch (err) {
+      console.error(err);
+      throw new Error("Failed to place order");
+    }
   }),
 });
- 
+
 // I learnt that exporting only the type of router restricts the client from accessing the code
 export type OrderRouter = typeof orderRouter;

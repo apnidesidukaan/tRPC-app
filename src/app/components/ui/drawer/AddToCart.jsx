@@ -241,6 +241,11 @@ export default function CartDrawer({ isOpen, onClose }) {
           >
             Proceed to Pay →
           </button>
+          <button onClick={async()=>{
+            await place.mutate()
+          }}>
+            place order
+          </button>
         </div>
       </div>
     </div>

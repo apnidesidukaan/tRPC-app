@@ -4,6 +4,7 @@
 import { useSession } from "next-auth/react";
 import { api } from "~/trpc/react";
 import { getLocalStorageCart, saveToLocalStorage } from "../util/cartHelpers.js";
+import { useCallback } from "react";
 // import { getLocalStorageCart } from "~/utils/cartHelpers";
 
 export const useCartManager = () => {
@@ -50,13 +51,13 @@ export const useCartManager = () => {
   };
 
   // Function to get cart items based on authentication status
-  const getCartItems = () => {
+  const getCartItems = useCallback(() => {
     if (session?.user) {
       return serverCart?.items || [];
     } else {
       return getLocalStorageCart();
     }
-  };
+  },[serverCart,session]);
 
   return { addItemToCart, getCartItems };
 };

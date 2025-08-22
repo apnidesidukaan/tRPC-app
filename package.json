@@ -38,6 +38,7 @@
     "mongoose": "^8.17.1",
     "next": "^15.2.3",
     "next-auth": "5.0.0-beta.25",
+    "razorpay": "^2.9.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.62.0",
