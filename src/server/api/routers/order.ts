@@ -44,14 +44,14 @@ export const orderRouter = createTRPCRouter({
         receipt: "receipt_" + Date.now(), // optional, for your own tracking
       });
       console.log(razorpayOrder)
-      const orderNo = parseInt(razorpayOrder.id, 16);
+      const orderNo = Math.floor(Math.random() * 100);
       // 3. Create order
       const order = await ctx.db.order.create({
         data: {
        
           subtotal: totalAmount,
           tax: 0,
-          user:ctx.session.user,
+          user:{connect:{id:ctx.session.user.id}},
           shippingFee: 0,
           discountTotal: 0,
           total: totalAmount,
@@ -59,8 +59,8 @@ export const orderRouter = createTRPCRouter({
           status: "pending", // Later update when payment confirmed
           items: {
             create: cartItem.map((item) => ({
+              name:item.name,
               inventoryId: item.inventoryId,
-              name: item.name,
               quantity: item.quantity,
               price: item.price,
               total: item.price * item.quantity,
@@ -69,7 +69,8 @@ export const orderRouter = createTRPCRouter({
           orderNo
         },
       });
-
+      // first clear the cart items in the cart then the cart
+      await ctx.db.cartItem.deleteMany({ where: { cartId: { in: carts.map(({id})=> id) } } });
       // 4. Clear cart after checkout
       await ctx.db.cart.deleteMany({ where: { userId } });
 
@@ -83,3 +84,17 @@ export const orderRouter = createTRPCRouter({
 
 // I learnt that exporting only the type of router restricts the client from accessing the code
 export type OrderRouter = typeof orderRouter;
+
+
+// this function is of no use right now
+// this is to get the number from the order id
+function base62ToNumber(str:string) {
+  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  let result = 0n; // use BigInt to hold large numbers
+  for (let char of str) {
+    const value = chars.indexOf(char);
+    if (value === -1) throw new Error(`Invalid character: ${char}`);
+    result = result * 62n + BigInt(value);
+  }
+  return result;
+}
