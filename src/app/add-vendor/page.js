@@ -72,7 +72,7 @@ const VendorOnboardingPage = () => {
       };
     });
   };
-
+  console.log(formData.modules)
 
   const handleNextStep = () => {
     if (currentStep === 1) {
@@ -255,7 +255,7 @@ console.log('relevantModules', relevantModules);
                         />
                       ) : (
                         <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${type.color || 'from-gray-300 to-gray-500'} flex items-center justify-center text-2xl mb-4 mx-auto`}>
-                          {type.icon}
+                          {}
                         </div>
                       )}
                       <h4 className="font-semibold text-[#3d2701] text-sm text-center">{type.name}</h4>

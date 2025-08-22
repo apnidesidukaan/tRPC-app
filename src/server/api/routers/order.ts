@@ -22,11 +22,12 @@ export const orderRouter = createTRPCRouter({
       const cartItem=await ctx.db.cartItem.findMany({
         where: { cartId: { in: carts.map(({id})=> id) } },
       });
-        
+      console.log(cartItem)
+      
       if (cartItem.length === 0) {
         throw new Error("Cart is empty!");
       }
-
+      
       // 2. Calculate total
       const totalAmount = cartItem.reduce(
         (sum, item) => sum + item.price * item.quantity,
@@ -34,9 +35,10 @@ export const orderRouter = createTRPCRouter({
       );
       
       console.log(typeof totalAmount)
-
+      
       // money should be in paise 
       let amountInPaise = Math.round(totalAmount * 100)
+      return
       
       const razorpayOrder = await razorpay.orders.create({
         amount: amountInPaise, // in paise
@@ -44,7 +46,11 @@ export const orderRouter = createTRPCRouter({
         receipt: "receipt_" + Date.now(), // optional, for your own tracking
       });
       console.log(razorpayOrder)
-      const orderNo = Math.floor(Math.random() * 100);
+      const lastOrder = await ctx.db.order.findFirst({
+  orderBy: { createdAt: "desc" },
+});
+
+const nextOrderNo = `ORD${(lastOrder?.id ?? 0) + 1}`;
       // 3. Create order
       const order = await ctx.db.order.create({
         data: {

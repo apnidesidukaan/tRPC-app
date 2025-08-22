@@ -2,7 +2,8 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { db } from "~/server/db";
+
+
 
 export const userRouter = createTRPCRouter({
   // 1. Register User
