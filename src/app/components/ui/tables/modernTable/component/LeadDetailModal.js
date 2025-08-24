@@ -25,19 +25,21 @@ import SuccessBadge from "../../../status/SuccessBadge";
 import ErrorBadge from "../../../status/ErrorBadge";
 import ConfirmationDialogueBox from "../../../status/Confirmation";
 import { api } from '~/trpc/react';
+import { useRouter } from 'next/navigation';
 
 const LeadDetailModal = ({ rowData, isModalOpen, setIsModalOpen }) => {
-  const leads = api.lead.getAll.useQuery()
+  const { data: leadsModule } = api.lead.getLeadModules.useQuery({ leadId: rowData.id })
+  console.log('aaya -----', leadsModule);
 
+  const router = useRouter();
 
-  // const convertLeadMutation = api.lead.getAll.useMutation({
-  //   onSuccess: () => {
-  //     leads.refetch(); // Refetch leads after successful deletion 
-  //   },
-  // });
+  const utils = api.useUtils();
+  const convertLeadMutation = api.lead.convertLeadToVendor.useMutation({
+    onSuccess: async () => {
+      router.refresh(); // refresh the page after success
+    },
+  });
 
-  // const { convertLead, } = useConvertLeadToVendor()
-  // const { refreshLeads } = useLeads()
 
   const [apiResponse, setApiResponse] = useState(''); // Success pop-up state
   const [isLoading, setIsLoading] = useState(false)
@@ -46,31 +48,32 @@ const LeadDetailModal = ({ rowData, isModalOpen, setIsModalOpen }) => {
   const [isError, setIsError] = useState(false)
 
 
-
   const onConvertLead = async () => {
-
     if (!rowData) return;
-    setIsLoading(true)
-    console.log('rowData', rowData)
-    const { success, successMessage, errorMessage } = await convertLead(rowData._id);
 
-    if (success) {
-      setIsSuccess(true)
-      setConfirmDelete(false)
-      setApiResponse(successMessage)
-      window.location.reload()
-      setIsLoading(false)
-    } else {
-      setIsError(true)
+    setIsLoading(true);
 
-      setConfirmDelete(false)
-      setApiResponse(errorMessage)
-      console.error('Error CONVERTING LEAD:', errorMessage);
-      setIsLoading(false)
+    try {
+      // Use mutateAsync to await the result
+      const data = await convertLeadMutation.mutateAsync({ leadId: rowData.id });
 
+      console.log("Conversion Result:", data);
+
+      setIsSuccess(true);
+      setConfirmDelete(false);
+      setApiResponse(data.message);
+      setIsLoading(false);
+      // Optionally reload window if needed
+      // window.location.reload();
+    } catch (error) {
+      console.error("Error converting lead:", error);
+
+      setIsError(true);
+      setConfirmDelete(false);
+      setApiResponse(error.message || "Something went wrong");
+      setIsLoading(false);
     }
-
-  }
+  };
 
   const [isVisible, setIsVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -426,17 +429,17 @@ const LeadDetailModal = ({ rowData, isModalOpen, setIsModalOpen }) => {
 
           {activeTab === 'modules' && (
             <div className="space-y-6">
-              {modules.length > 0 ? (
+              {leadsModule?.length > 0 ? (
                 <>
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-gray-900">Modules of Interest</h3>
                     <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                      {modules.length} {modules.length === 1 ? 'Module' : 'Modules'}
+                      {leadsModule.length} {leadsModule.length === 1 ? 'Module' : 'Modules'}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {modules.map((mod, i) => (
+                    {leadsModule?.map((mod, i) => (
                       <div key={i} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200 hover:shadow-md transition-shadow duration-200">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-blue-600 rounded-lg">

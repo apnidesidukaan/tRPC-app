@@ -1,6 +1,7 @@
 
 
 
+import DiscoverySection from './components/sections/DiscoverySection';
 import HeroSection from './components/sections/HeroSection';
 import TopBrandsSection from './components/sections/TopBrandsSection';
 import TopCategoriesSection from './components/sections/TopCategoriesSection';
@@ -26,9 +27,9 @@ export default async function HomePage() {
 
         <HeroSection />
         
-        <TrendingProductsSection  />
-        {/* <TopCategoriesSection categories={trendingCategoryData?.categories} /> */}
-        {/* <TopBrandsSection brands={topBrands} /> */}
+        <DiscoverySection/>
+        {/* <TrendingProductsSection  /> */}
+
       </main>
 
       <Footer />

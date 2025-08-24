@@ -24,6 +24,7 @@ import Loader from './ui/status/Loader';
 import ConfirmationDialogueBox from './ui/status/Confirmation';
 import { FaBusinessTime, FaJediOrder } from 'react-icons/fa';
 import { Boxes, CassetteTape, ChartBarStacked } from 'lucide-react';
+import { SiMarketo } from 'react-icons/si';
 
 const ErpSidebar = (props) => {
   const location = usePathname();
@@ -73,7 +74,6 @@ const ErpSidebar = (props) => {
 
     },
 
-
     {
       name: 'Inventory',
       icon: <Boxes size={iconSize} />,
@@ -89,6 +89,14 @@ const ErpSidebar = (props) => {
 
     },
 
+    {
+      name: 'Marketing',
+      icon: <SiMarketo size={iconSize} />,
+      path: '/marketing',
+      activePath: ['/business-details', '/business'],
+
+
+    },
 
 
     {

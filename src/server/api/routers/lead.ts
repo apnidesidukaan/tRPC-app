@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
@@ -60,10 +61,12 @@ export const leadRouter = createTRPCRouter({
 
       // Step 2: Store Lead → Modules in junction table
       if (input.modules && input.modules.length > 0) {
-        await db.leadModule.createMany({
+        await db.requestedModule.createMany({
           data: input.modules.map((moduleId) => ({
-            leadId: lead.id,
-            moduleId: moduleId,
+            moduleId,
+            // assign either leadId or vendorId depending on context
+            requester: lead.id ?? null,
+            // vendorId:  null,
           })),
         });
       }
@@ -92,4 +95,127 @@ export const leadRouter = createTRPCRouter({
 
 
 
+
+
+
+
+
+
+  getLeadModules: publicProcedure
+    .input(z.object({ leadId: z.string() })) // require lead ID
+    .query(async ({ input }) => {
+      // Fetch all module IDs for this lead from the junction table
+      const leadModules = await db.requestedModule.findMany({
+        where: { leadId: input.leadId },
+        select: { moduleId: true }, // just get the module IDs
+      });
+
+      // If you want full module details, fetch them from Module table
+      const moduleIds = leadModules.map((lm) => lm.moduleId);
+
+      const modules = await db.module.findMany({
+        where: { id: { in: moduleIds } },
+      });
+
+      return modules; // array of module objects
+    }),
+
+
+
+
+
+
+
+
+
+
+  convertLeadToVendor: protectedProcedure
+    .input(
+      z.object({
+        leadId: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { leadId } = input;
+
+      // Step 1: Find the lead
+      const lead = await db.lead.findUnique({
+        where: { id: leadId },
+        include: { modules: true }, // include leadModule relations if needed
+      });
+
+      if (!lead) {
+        throw new Error("Lead not found");
+      }
+
+      // Step 2: Get role ID for 'vendor'
+      const vendorRole = await db.role.findFirst({ where: { name: "vendor" } });
+      if (!vendorRole) {
+        throw new Error("Vendor role not found in Role table");
+      }
+
+      // Step 3: Hash default password
+      const hashedPassword = await bcrypt.hash("123", 10);
+
+      // Step 4: Create vendor
+      const newVendor = await db.vendor.create({
+        data: {
+          name: lead.name,
+          email: lead.email,
+          password: hashedPassword,
+          // phone: lead.phone,
+          addressStreet: lead.address,
+          // roleId: vendorRole.id,
+          role: {
+            connect: { id: vendorRole.id }, // explicitly connect the role
+          },
+          agreementCheck: true,
+          vendorType: lead?.details?.businessType || 'retailer_product',
+          mobile: lead.phone,
+        },
+      });
+
+      // Step 5: Create associated store
+      const moduleIds = await db.requestedModule.findMany({
+        where: { requester: lead.id },
+        select: { moduleId: true },
+      });
+
+      // console.log('===========================', newVendor);
+      const newStore = await db.store.create({
+        data: {
+          vendorId: newVendor.id,
+          mobile: newVendor.mobile,
+          name: lead.companyName || "Store",
+          // modules: {   // 👈 lowercase "modules", matches schema field
+          //   connect: moduleIds.map((m) => ({ id: m.moduleId })),
+          // },
+        },
+      });
+
+
+      // Step 5.1: Update requested modules to link them with store
+      await db.requestedModule.updateMany({
+        where: { requester: lead.id },
+        data: { storeId: newStore.id },
+      });
+
+      // Step 6: Update lead status
+      await db.lead.update({
+        where: { id: lead.id },
+        data: { status: "approved" },
+      });
+
+      return {
+        message: "Lead converted to vendor and store created successfully",
+        vendor: newVendor,
+        store: newStore,
+      };
+    }),
+
 });
+
+
+
+
+

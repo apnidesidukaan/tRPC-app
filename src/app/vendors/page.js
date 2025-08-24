@@ -1,18 +1,17 @@
 import Layout from "../layouts/Layout";
 // import { Breadcrumbs } from "../../components/ui/Breadcrumb/breadcrumb";
+// import ExplorerView from "../../components/ExplorerView";;
 import { FaPeopleGroup } from "react-icons/fa6";
 // import { fetchLeadsServerSide } from "../../api/leads";
-import { GiShop } from "react-icons/gi";
-import { RiCustomerService2Fill } from "react-icons/ri";
-
 import { MdPending } from "react-icons/md";
 import { TbTruckDelivery } from "react-icons/tb";
 import { CiShop } from "react-icons/ci";
 import { FaCheck } from "react-icons/fa";
-import ExplorerView from "../components/exploreView/leads";
+import { GrUserManager } from "react-icons/gr";
+import { SiHomeassistantcommunitystore } from "react-icons/si";
+// import { fetchAllProfiles } from "../../api/profile";
 import { Breadcrumbs } from "../components/ui/Breadcrumb/breadcrumb";
-
-import { api } from "~/trpc/react";
+import ExplorerView from "../components/exploreView/vendors";
 
 
 // ===================================================================
@@ -23,14 +22,10 @@ const breadcrumbs = [
   { label: "View Inventory" },
 ];
 // ===================================================================
-const ViewLeadsPage = () => {
-  // console.log(api.business); // see if `getAllLeads` exists
 
-  // const { data, isLoading } = api.lead.getAllLeads.useQuery();
-  // console.log(data);
+export default async function ViewVendorPage() {
 
-  // if (isLoading) return <p>Loading...</p>;
-  // if (!leads) return <p>No leads found</p>;
+  // const response = await fetchAllProfiles('vendor')
 
   let filterConfig = [
 
@@ -68,9 +63,6 @@ const ViewLeadsPage = () => {
       ]
     },
   ]
-
-  // console.log("Leads response:", response);
-
   // ===================================================================
   return (
     <Layout>
@@ -79,16 +71,16 @@ const ViewLeadsPage = () => {
         <Breadcrumbs items={breadcrumbs} />
         <ExplorerView
           filtersConfig={filterConfig}
-          headerTitle='Lead Management'
-          headerIcon={<FaPeopleGroup />}
-          // data={leads}
+          headerTitle='Vendor(s)'
+          headerIcon={<SiHomeassistantcommunitystore />}
+          // data={response?.data}
           columns={['Name', 'Email', 'Phone', 'Location', 'Status', 'Created On']}
-          tableType='leads'
+          tableType='vendors'
         />
       </div>
 
-    </Layout >
+    </Layout>
   );
 }
-export default ViewLeadsPage;
+
 // ===================================================================

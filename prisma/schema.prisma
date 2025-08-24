@@ -215,6 +215,7 @@ model Product {
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    // InventoryVendor InventoryVendor[]
 
     @@index([name])
     @@index([slug])
@@ -222,7 +223,7 @@ model Product {
     @@index([approvalStatus])
 }
 
-// --------- Inventory (vendor listing) ---------
+// --------- Inventory (Admin listing) ---------
 // Add these two lines to your existing Inventory to link a vendor item to a Product.
 model Inventory {
     id String @id @default(auto()) @map("_id") @db.ObjectId
@@ -286,9 +287,91 @@ model Inventory {
     // cartId         Cart    @relation(fields: [cartId], references: [id])
     CartItem       CartItem[]
 
+    createdAt       DateTime          @default(now())
+    updatedAt       DateTime          @updatedAt
+    Category        Category          @relation(fields: [categoryId], references: [id])
+    // CartItem  CartItem[]
+    Cart            Cart?             @relation(fields: [cartId], references: [id])
+    OrderItem       OrderItem[]
+    InventoryVendor InventoryVendor[]
+
+    @@index([name])
+    @@index([status])
+    @@index([approvalStatus])
+}
+
+// --------- Inventory (vendor listing) ---------
+
+model InventoryVendor {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+
+    // Link to Product (global catalog)
+    // productId String  @db.ObjectId
+    // product   Product @relation(fields: [productId], references: [id])
+
+    // For restaurants
+    preparationTime Int?
+    isVeg           Boolean?
+    isCombo         Boolean  @default(false)
+    comboItems      Json?
+
+    // For pharmacy
+    prescriptionRequired Boolean?
+    batchNumber          String?
+    expiryDate           DateTime?
+    saltComposition      String?
+
+    // For tailoring
+    isService   Boolean?
+    duration    Int?
+    serviceType String?
+
+    // SEO / Search Metadata
+    searchTags      String[]
+    keywords        String[]
+    metaDescription String?
+    metaImage       String?
+
+    // Logistics Info (vendor overrides)
+    weight     Float?
+    dimensions Json?
+    fragile    Boolean?
+
+    name        String
+    description String?
+    categoryId  String  @db.ObjectId
+    // category    Category @relation(fields: [categoryId], references: [id])
+
+    attributes        Json?
+    stock             Int?     @default(0) // vendor stock
+    lowStockThreshold Int?     @default(10)
+    price             Float? // vendor sell price
+    discountPrice     Float?   @default(0)
+    tax               Float?   @default(0) // percent
+    sku               String?  @unique
+    images            String[]
+    status            String   @default("active")
+
+    createdById String? @db.ObjectId
+    // createdBy       Vendor?  @relation(fields: [createdById], references: [id])
+
+    isDeleted      Boolean @default(false)
+    approvalStatus String  @default("pending")
+    approvedById   String? @db.ObjectId
+
+    inventoryId String?    @db.ObjectId
+    inventory   Inventory? @relation(fields: [inventoryId], references: [id])
+
+    vendorId     String?    @db.ObjectId
+    vendor       Vendor?    @relation(fields: [approvedById], references: [id])
+    customFields Json?
+    cartId       String?    @db.ObjectId
+    // cartId         Cart    @relation(fields: [cartId], references: [id])
+    CartItem     CartItem[]
+
     createdAt DateTime    @default(now())
     updatedAt DateTime    @updatedAt
-    Category  Category    @relation(fields: [categoryId], references: [id])
+    // Category  Category?    @relation(fields: [categoryId], references: [id])
     // CartItem  CartItem[]
     Cart      Cart?       @relation(fields: [cartId], references: [id])
     OrderItem OrderItem[]
@@ -322,6 +405,7 @@ model Category {
     Store   Store?  @relation(fields: [storeId], references: [id])
     // Store   Store?  @relation(fields: [storeId], references: [id])
     // Store   Store?  @relation(fields: [storeId], references: [id])
+    // InventoryVendor InventoryVendor[]
 }
 
 model Module {
@@ -341,15 +425,16 @@ model Module {
 
     createdBy String? // optional
 
-    createdAt DateTime     @default(now())
-    updatedAt DateTime     @updatedAt
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
     // Inventory Inventory[]
     Category  Category[]
     // Store     Store?     @relation(fields: [storeId], references: [id])
-    storeId   String?      @db.ObjectId
-    Store     Store?       @relation(fields: [storeId], references: [id])
+    // storeId   String?    @db.ObjectId
+    // store     Store?     @relation(fields: [storeId], references: [id]) // 👈 relation back
+
     // Many-to-many with Lead
-    leads     LeadModule[] // ✅ reverse relation
+    leads RequestedModule[] // ✅ reverse relation
 }
 
 model Business {
@@ -413,10 +498,11 @@ model Cart {
 
     items CartItem[]
 
-    status    CartStatus  @default(active) // active | checkedOut | abandoned
-    createdAt DateTime    @default(now())
-    updatedAt DateTime    @updatedAt
-    Inventory Inventory[]
+    status          CartStatus        @default(active) // active | checkedOut | abandoned
+    createdAt       DateTime          @default(now())
+    updatedAt       DateTime          @updatedAt
+    Inventory       Inventory[]
+    InventoryVendor InventoryVendor[]
 }
 
 // Each entry in the cart represents one inventory variant (checkout item)
@@ -438,8 +524,10 @@ model CartItem {
     image    String?
     vendorId String? @db.ObjectId
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    createdAt         DateTime         @default(now())
+    updatedAt         DateTime         @updatedAt
+    InventoryVendor   InventoryVendor? @relation(fields: [inventoryVendorId], references: [id])
+    inventoryVendorId String?          @db.ObjectId
 }
 
 enum CartStatus {
@@ -606,16 +694,18 @@ model Order {
 }
 
 model OrderItem {
-    id        String    @id @default(auto()) @map("_id") @db.ObjectId
-    orderId   String    @db.ObjectId
-    order     Order     @relation(fields: [orderId], references: [id])
-    productId String    @db.ObjectId
-    product   Inventory @relation(fields: [productId], references: [id])
-    name      String?
-    variant   String?
-    quantity  Int
-    price     Float
-    subtotal  Float
+    id                String           @id @default(auto()) @map("_id") @db.ObjectId
+    orderId           String           @db.ObjectId
+    order             Order            @relation(fields: [orderId], references: [id])
+    productId         String           @db.ObjectId
+    product           Inventory        @relation(fields: [productId], references: [id])
+    name              String?
+    variant           String?
+    quantity          Int
+    price             Float
+    subtotal          Float
+    InventoryVendor   InventoryVendor? @relation(fields: [inventoryVendorId], references: [id])
+    inventoryVendorId String?          @db.ObjectId
 }
 
 model DeliveryAddress {
@@ -778,8 +868,8 @@ model DeliveryPartnerAddress {
 model Vendor {
     id       String  @id @default(auto()) @map("_id") @db.ObjectId
     name     String
-    mobile   String  @unique
-    email    String  @unique
+    mobile   String
+    email    String
     password String?
 
     dob    DateTime?
@@ -795,7 +885,7 @@ model Vendor {
     addressLng     Float?
 
     // Bank Account
-    bankAccount BankAccountDetails @relation(fields: [bankAccountDetailsId], references: [id])
+    bankAccount BankAccountDetails? @relation(fields: [bankAccountDetailsId], references: [id])
     orders      Order[]
     UPIid       String?
 
@@ -805,7 +895,7 @@ model Vendor {
     areaManagerId String?      @db.ObjectId
     areaManager   AreaManager? @relation(fields: [areaManagerId], references: [id])
 
-    referralCode   String? @unique
+    referralCode   String?
     agreementCheck Boolean
 
     businessId String?   @db.ObjectId
@@ -825,11 +915,12 @@ model Vendor {
     lastLoginAt DateTime?
     deviceInfo  DeviceInfo? @relation(fields: [deviceInfoId], references: [id])
 
-    createdAt            DateTime @default(now())
-    updatedAt            DateTime @updatedAt
-    bankAccountDetailsId String   @db.ObjectId
-    deviceInfoId         String?  @db.ObjectId
+    createdAt            DateTime          @default(now())
+    updatedAt            DateTime          @updatedAt
+    bankAccountDetailsId String?           @db.ObjectId
+    deviceInfoId         String?           @db.ObjectId
     Store                Store[]
+    InventoryVendor      InventoryVendor[]
 }
 
 model VendorDocument {
@@ -1070,7 +1161,7 @@ model Store {
     // Address as embedded type
     address StoreAddress?
 
-    mobile String @unique
+    mobile String
 
     operating_hours OperatingHours?
     status          StoreStatus?
@@ -1083,10 +1174,10 @@ model Store {
 
     ratings Ratings?
 
-    createdAt DateTime   @default(now())
-    updatedAt DateTime   @updatedAt
+    createdAt DateTime          @default(now())
+    updatedAt DateTime          @updatedAt
     Category  Category[]
-    Module    Module[]
+    modules   RequestedModule[] // 👈 add this
 }
 
 //////////////////// Nested Embedded Types ////////////////////
@@ -1183,7 +1274,7 @@ model AuditLog {
 }
 
 model Lead {
-    id             String         @id @default(auto()) @map("_id") @db.ObjectId
+    id             String            @id @default(auto()) @map("_id") @db.ObjectId
     leadType       LeadType
     name           String
     email          String
@@ -1195,14 +1286,14 @@ model Lead {
     panNumber      String?
     region         Region?
     source         LeadSource
-    status         LeadStatus     @default(new)
-    assignedToId   String?        @db.ObjectId
+    status         LeadStatus        @default(new)
+    assignedToId   String?           @db.ObjectId
     comments       String?
     details        LeadDetails?
     // documents      LeadDocument[]
-    modules        LeadModule[] // ✅ references join collection
-    createdAt      DateTime       @default(now())
-    updatedAt      DateTime       @updatedAt
+    modules        RequestedModule[] // ✅ references join collection
+    createdAt      DateTime          @default(now())
+    updatedAt      DateTime          @updatedAt
 
     // relation
     // assignedTo User? @relation(fields: [assignedToId], references: [id])
@@ -1212,12 +1303,15 @@ model Lead {
     // @@map("leads")
 }
 
-model LeadModule {
-    id       String @id @default(auto()) @map("_id") @db.ObjectId
-    leadId   String @db.ObjectId
-    moduleId String @db.ObjectId
+model RequestedModule {
+    id        String  @id @default(auto()) @map("_id") @db.ObjectId
+    requester String? @db.ObjectId
+    storeId   String? @db.ObjectId
+    moduleId  String  @db.ObjectId
 
-    lead   Lead   @relation(fields: [leadId], references: [id])
+    // relations
+    lead   Lead?  @relation(fields: [requester], references: [id])
+    store  Store? @relation(fields: [storeId], references: [id])
     module Module @relation(fields: [moduleId], references: [id])
 }
 
@@ -1275,4 +1369,50 @@ enum LeadStatus {
     approved
     rejected
     onboarding
+}
+
+model Discovery {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+
+    // Display
+    title       String // e.g., "Quick Meals"
+    subtitle    String? // e.g., "Ready-to-eat noodles, pasta, soup mixes"
+    image       String? // banner/card image
+    displayType String // "grid" | "carousel" | "list" | "hero"
+
+    // Linking
+    type   String // "category" | "product" | "inventory" | "mixed"
+    refIds String[] @db.ObjectId // manual IDs (if curated)
+
+    // Dynamic Filters
+    filters Json? // JSON rules, e.g.
+    /**
+     * {
+     * "price": { "lte": 100 },
+     * "isFeatured": true,
+     * "tags": ["healthy", "trending"],
+     * "location": "Lucknow",
+     * "sortBy": "popularity"
+     * }
+     */
+
+
+
+
+  // Visual Settings
+    theme       String?     // "light" | "dark" | "custom"
+    bgColor     String?     // e.g., "#FFFFFF" or Tailwind token like "bg-gray-100"
+    textColor   String?     // e.g., "#000000" or "text-gray-800"
+    accentColor String?     // e.g., "#FF5733" for highlights
+    layoutStyle String?     // "card" | "banner" | "minimal" | "glassmorphism"
+    customCss   String?     // optional custom Tailwind classes
+
+
+    // Control
+    isActive   Boolean @default(true)
+    isFeatured Boolean @default(false)
+    priority   Int? // ordering for homepage
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }

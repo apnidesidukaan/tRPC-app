@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { getManyByIds } from "../../../service/discovery";
 
 export const productRouter = createTRPCRouter({
   // Create a new product
@@ -474,4 +475,27 @@ export const productRouter = createTRPCRouter({
 
       return products;
     }),
+
+
+
+
+
+
+  getManyByIds: publicProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string()),   // array of refIds
+        type: z.string(),           // "module" | "category" | "product" | "inventory"
+        limit: z.number().optional(),
+        skip: z.number().optional(),   // optional for pagination
+      })
+    )
+    .query(async ({ input }) => {
+      return await getManyByIds(input.ids, input.type, {
+        limit: input.limit,
+        skip: input.skip,
+      });
+    }),
+
+
 });

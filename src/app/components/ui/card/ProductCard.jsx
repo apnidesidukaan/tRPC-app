@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, ShoppingCart, Minus, Plus, X } from "lucide-react";
+import { Heart, Minus, Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { api } from "~/trpc/react";
@@ -14,7 +14,6 @@ const ProductCard = ({ product, onToggleWishlist }) => {
 
     // --- tRPC hooks ---
     const utils = api.useUtils();
-
     const { data: cart } = api.cart.get.useQuery();
     const addItem = api.cart.addItem.useMutation({
         onSuccess: () => utils.cart.get.invalidate(),
@@ -33,7 +32,6 @@ const ProductCard = ({ product, onToggleWishlist }) => {
             setShowVariantPicker(true);
             return;
         }
-
         directAdd({
             vendorId: product.vendorId,
             inventoryId: product.id,
@@ -66,145 +64,85 @@ const ProductCard = ({ product, onToggleWishlist }) => {
         setShowVariantPicker(false);
     };
 
-    const cartItem = cart?.items?.find(
-        (i) => i.inventoryId === product.id
-    );
+    const cartItem = cart?.items?.find((i) => i.inventoryId === product.id);
     const router = useRouter();
+
     // --- Render ---
     return (
-        <div className=" bg-white rounded-lg shadow hover:shadow-lg transition-all duration-300">
+        <motion.div
+            whileHover={{ y: -4 }}
+            className="h-90 group bg-white rounded-2xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
+        >
             {/* Product Image */}
             <div
-
                 onClick={() => router.push(`/product-detail/${product.id}`)}
-                className="relative">
+                className="relative cursor-pointer"
+            >
                 <Image
-                    src={product.metaImage || "/placeholder.png"}
+                    src={product.metaImage || product.icon || "/placeholder.png"}
                     alt={product.name}
                     width={300}
                     height={200}
-                    className="w-full h-48 object-cover rounded-t-lg"
+                    className="w-full h-52 object-cover transition-transform duration-300 group-hover:scale-105"
                 />
+                {/* Wishlist */}
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         onToggleWishlist(product.id);
                     }}
-                    className="absolute top-2 right-2 bg-white/80 p-2 rounded-full shadow"
+                    className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow hover:scale-110 transition"
                 >
                     <Heart
-                        className={`h-5 w-5 ${product.isWishlisted ? "text-red-500 fill-red-500" : "text-gray-600"
+                        className={`h-5 w-5 ${product.isWishlisted
+                            ? "text-red-500 fill-red-500"
+                            : "text-gray-500"
                             }`}
                     />
                 </button>
             </div>
 
             {/* Product Info */}
-            <div className="p-3">
-                <h3 className="font-medium text-gray-900 line-clamp-1">{product.name}</h3>
-                <p className="text-sm text-gray-500 line-clamp-2">{product.description}</p>
-                <div className="flex justify-between items-center mt-2">
-                    <span className="text-primary font-bold">
-                        ₹{product.price?.toFixed(2)}
-                    </span>
+            <div className="p-4">
+                <h3 className="font-semibold text-gray-900 text-base line-clamp-1">
+                    {product.name}
+                </h3>
+                <p className="text-sm text-gray-500 line-clamp-2 mt-1">
+                    {product.description}
+                </p>
 
-                    {cartItem ? (
-                        <div className="flex items-center gap-2 bg-primary text-white px-2 py-1 rounded">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateItem.mutate({
-                                        inventoryId: cartItem.inventoryId,
-                                        variantOptionId: cartItem.variantOptionId,
-                                        quantity: Math.max(cartItem.quantity - 1, 1),
-                                    });
-                                }}
+                <div className="flex flex-wrap gap-1 mt-3">
+                    {product?.tags?.map((tag, index) => {
+                        // Define some desi colors
+                        const colors = [
+                            "bg-yellow-400/30 text-yellow-800",
+                            "bg-red-400/30 text-red-800",
+                            "bg-green-400/30 text-green-800",
+                            "bg-orange-400/30 text-orange-900",
+                            "bg-pink-400/30 text-pink-800",
+                            "bg-purple-400/30 text-purple-800",
+                        ];
+                        const colorClass = colors[index % colors.length];
+
+                        return (
+                            <span
+                                key={index}
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium truncate max-w-[100px] ${colorClass}`}
+                                title={tag}
                             >
-                                <Minus size={16} />
-                            </button>
-                            <span className="text-sm">{cartItem.quantity}</span>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateItem.mutate({
-                                        inventoryId: cartItem.inventoryId,
-                                        variantOptionId: cartItem.variantOptionId,
-                                        quantity: cartItem.quantity + 1,
-                                    });
-                                }}
-                            >
-                                <Plus size={16} />
-                            </button>
-                        </div>
-                    ) : (
-                        // <button
-                        //     onClick={(e) => {
-                        //         e.stopPropagation();
-                        //         handleAddClick();
-                        //     }}
-                        //     className="cursor-pointer bg-primary text-white px-3 py-1 rounded flex items-center gap-1"
-                        // >
-                        //     <ShoppingCart size={16} />
-                        //     <span>Add</span>
-
-
-                        // </button>
-
-                        <AddToCart inventoryItem={product} />
-                    )}
+                                {tag || "badge"}
+                            </span>
+                        );
+                    })}
                 </div>
+
+
+
+
             </div>
 
-            {/* Variant Picker Modal */}
-            <AnimatePresence>
-                {showVariantPicker && (
-                    <motion.div
-                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                    >
-                        <motion.div
-                            className="bg-white rounded-lg shadow-lg p-4 w-96 relative"
-                            initial={{ scale: 0.9 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0.9 }}
-                        >
-                            <button
-                                onClick={() => setShowVariantPicker(false)}
-                                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-                            >
-                                <X size={20} />
-                            </button>
-                            <h3 className="text-lg font-semibold mb-4">Choose Variant</h3>
 
-                            {product.variants?.map((variant) => (
-                                <div key={variant._id} className="mb-4">
-                                    <p className="font-medium text-gray-800">{variant.name}</p>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {variant.options?.map((option) => (
-                                            <button
-                                                key={option._id}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleAddVariantOption(variant, option);
-                                                }}
-                                                className={`px-3 py-1 rounded border ${selectedOptions[variant._id] === option._id
-                                                    ? "bg-primary text-white border-primary"
-                                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                                    }`}
-                                            >
-                                                {option.value} (₹{option.price})
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
+        </motion.div>
     );
 };
 

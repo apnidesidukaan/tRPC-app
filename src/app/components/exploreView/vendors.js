@@ -1,19 +1,19 @@
 'use client'
 import { useState, useEffect } from "react";
-import Header from "./ui/tables/modernTable/component/Header"; // Adjust path as needed
-import SearchBar from "./ui/tables/modernTable/component/SearchBar"; // Adjust path as needed
-import ActiveFilters from "./ui/tables/modernTable/component/ActiveFilters"; // Adjust path as needed
-import FilterPanel from "./ui/tables/modernTable/component/FilterPanel"; // Adjust path as needed
-import Summary from "./ui/tables/modernTable/component/Summary"; // Adjust path as needed
-import Table from "./ui/tables/modernTable/component/Table"; // Adjust path as needed
-import OrdersTable from "./ui/tables/modernTable/component/Table-orders"; // Adjust path as needed
-import Grid from "./ui/tables/modernTable/component/Grid"; // Adjust path as needed
-import LeadDetailModal from "./ui/tables/modernTable/component/LeadDetailModal"; // Adjust path as needed
-import UserTable from "./ui/tables/modernTable/component/Table-user";
+import Header from "../ui/tables/modernTable/component/Header"; // Adjust path as needed
+import SearchBar from "../ui/tables/modernTable/component/SearchBar"; // Adjust path as needed
+import ActiveFilters from "../ui/tables/modernTable/component/ActiveFilters"; // Adjust path as needed
+import FilterPanel from "../ui/tables/modernTable/component/FilterPanel"; // Adjust path as needed
+import Summary from "../ui/tables/modernTable/component/Summary"; // Adjust path as needed
+import Table from "../ui/tables/modernTable/component/Table"; // Adjust path as needed
+import OrdersTable from "../ui/tables/modernTable/component/Table-orders"; // Adjust path as needed
+import Grid from "../ui/tables/modernTable/component/Grid"; // Adjust path as needed
+import LeadDetailModal from "../ui/tables/modernTable/component/LeadDetailModal"; // Adjust path as needed
+import UserTable from "../ui/tables/modernTable/component/Table-user";
 
-import { moduleIcons, categoryIcons, statusIcons, commonIcons } from '../components/ui/tables/modernTable/constants/icons'; // Adjust path
-import VendorsTable from "./ui/tables/modernTable/component/Table-vendor";
-import DeliveryPartnerTable from "./ui/tables/modernTable/component/Table-dp";
+import { moduleIcons, categoryIcons, statusIcons, commonIcons } from '../ui/tables/modernTable/constants/icons'; // Adjust path
+import VendorsTable from "../ui/tables/modernTable/component/Table-vendor";
+import DeliveryPartnerTable from "../ui/tables/modernTable/component/Table-dp";
 import { api } from "~/trpc/react";
 
 export default function ExplorerView({
@@ -31,9 +31,9 @@ export default function ExplorerView({
 
 
 
-    const {data :data} = api.lead.getAllLeads.useQuery();
+    const { data } = api.vendor.getAll.useQuery();
 
-    // console.log('api.lead', leads);
+    console.log('vendors========', data);
 
     // State for dataArray data
     const [dataArray, setDataArray] = useState([]);

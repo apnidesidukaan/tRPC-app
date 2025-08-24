@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { getManyByIds } from "../../../service/discovery";
 
 // -------------------
 // Validation Schemas
@@ -54,9 +55,9 @@ export const categoryRouter = createTRPCRouter({
   // READ ALL
   getAll: publicProcedure.query(async () => {
     return db.category.findMany({
-      where: { isDeleted: false },
-      orderBy: { createdAt: "desc" },
-      include: { Module: true, Inventory: true },
+      // where: { isDeleted: false },
+      // orderBy: { createdAt: "desc" },
+      // include: { Module: true, Inventory: true },
     });
   }),
 
@@ -67,6 +68,17 @@ export const categoryRouter = createTRPCRouter({
       return db.category.findUnique({
         where: { id: input },
         include: { Module: true, Inventory: true },
+      });
+    }),
+
+
+
+  getByModuleId: publicProcedure
+    .input(z.string())
+    .query(async ({ input }) => {
+      return db.category.findMany({
+        where: { moduleId: input },
+        // include: { Module: true, Inventory: true },
       });
     }),
 
@@ -99,6 +111,25 @@ export const categoryRouter = createTRPCRouter({
         where: { id: input },
       });
     }),
+
+
+  getManyByIds: publicProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string()),   // array of refIds
+        type: z.string(),           // "module" | "category" | "product" | "inventory"
+        limit: z.number().optional(),
+        skip: z.number().optional(),   // optional for pagination
+      })
+    )
+    .query(async ({ input }) => {
+      return await getManyByIds(input.ids, input.type, {
+        limit: input.limit,
+        skip: input.skip,
+      });
+    }),
+
+
 });
 
 // -------------------
@@ -173,4 +204,13 @@ export const moduleRouter = createTRPCRouter({
         where: { id: input },
       });
     }),
+
+
+
+
+
+
+
+
+
 });

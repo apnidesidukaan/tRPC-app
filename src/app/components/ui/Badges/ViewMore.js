@@ -7,7 +7,7 @@ import React from "react";
 export default function ViewMore() {
   //========================================================================
   const { id } = useParams()
-  console.log('ViewMore', useParams().id);
+  // console.log('ViewMore', useParams().id);
 
   const router = useRouter();
   //========================================================================

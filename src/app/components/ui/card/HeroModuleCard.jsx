@@ -24,7 +24,7 @@ const HeroModuleCard = ({ module, index }) => {
     const handleClick = () => {
 
         if (module?.metadata?.slug) {
-            router.push(`/explore-module/${module?.metadata?.slug}/${module?._id}`);
+            router.push(`/explore-module/${module?.metadata?.slug}/${module?.id}`);
         }
     };
 

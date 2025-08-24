@@ -47,7 +47,7 @@ console.log('users',users);
               >
                 <td
                   onClick={() => {
-                    router.push(`/view-profile/vendor/${user._id}`)
+                    router.push(`/view-profile/${user.id}`)
                   }}
                   className="px-5 py-4 font-mono font-semibold text-blue-700 flex items-center gap-2 group relative">
                   {/* Avatar or fallback icon */}
