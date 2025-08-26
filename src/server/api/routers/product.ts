@@ -204,7 +204,27 @@ export const productRouter = createTRPCRouter({
       });
       return product;
     }),
+  getVendorInventoryByProductId: publicProcedure
+    .input(z.string()) // expecting productId as string
+    .query(async ({ input }) => {
+      let  inventories = await db.inventory.findMany({
+        where: {
+          productId: input, // filter by productId
+        },
+        include: {
+          product: true, // also fetch product details if needed
+        },
+      });
+      //now fetch the vendory inventory using inventory global
+      const inventoryIds = inventories.map((invent) => invent.id);
+      const vendorInventoriesId = (await db.inventoryVendor.findMany({
+        where: { inventoryId: { in: inventoryIds } }, // filter by inventoryIds
+      })).map((invent) => invent.inventoryId);
 
+      let vendorInventory=inventories.filter((invent) => vendorInventoriesId.includes(invent.id));
+      // Now you have the vendorInventories related to the product
+      return vendorInventory;
+    }),
 
   getInventoryByProductId: publicProcedure
     .input(z.string()) // expecting productId as string

@@ -41,6 +41,7 @@ const ProductDetailPage = () => {
 
   const { id } = useParams();
   const { data: inventoryItem, isLoading, error } = api.product.getInventoryByProductId.useQuery(String(id));
+  const {data: vendorInventory} = api.product.getVendorInventoryByProductId.useQuery(String(id));
   const { data: product, } = api.product.getById.useQuery(String(id));
   // console.log(product)
   
@@ -165,8 +166,10 @@ const ProductDetailPage = () => {
 
 
 
-          <InventoryList inventoryItem={inventoryItem}/>
-
+          {/* <InventoryList inventoryItem={inventoryItem}/> */}
+          
+          <InventoryList inventoryItem={vendorInventory}/>
+         
 
         
           <DeliveryInfo />
