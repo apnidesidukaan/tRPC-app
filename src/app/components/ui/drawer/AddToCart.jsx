@@ -8,6 +8,8 @@ import {
 import CartItem from "../CartItem/drawer";
 import { useCartManager } from "~/app/components/CartManager";
 import { api } from '~/trpc/react';
+import { useRazorpay } from "razorpay-react";
+
 // import { useCart } from '../../../hooks/useCart';
 // import { useFetchInventoryItem } from '../../../controllers/inventory';
 // import httpClient from '../../../config/httpClient';
@@ -42,8 +44,41 @@ export default function CartDrawer({ isOpen, onClose }) {
       },
     }
   );
-
+  // getting the razorpay instance
+  const {error,razorpay}=useRazorpay()
   const { getCartItems, addItemToCart } = useCartManager()
+
+  async function handlePayment() {
+    const resolve = await place.mutateAsync();
+    console.log(resolve.id);
+
+    if (!resolve.id) {
+      alert('Order ID not found. Please try again.');
+      return;
+    }
+      // 2. Setup Razorpay options
+      console.log(process.env.NEXT_PUBLIC_VALUE);
+      const options = {
+        description: 'Apni Desi Dukaan Order Payment',
+        image: 'https://your-logo-url.com/logo.png',
+        currency: 'INR',
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: resolve.amount ,
+        order_id: resolve.id,
+        name: 'Apni Desi Dukaan',
+        prefill: {
+          email: process.env.NEXT_PUBLIC_USER_EMAIL,
+          contact: process.env.NEXT_PUBLIC_USER_CONTACT,
+          name: process.env.NEXT_PUBLIC_USER_NAME,
+        },
+        theme: { color: '#00B251' },
+      };
+    razorpay.open(options).then(paymentData => {
+      console.log('Payment successful:', paymentData);
+    }).catch(error => {
+      console.error('Payment failed:', error);
+    });
+  }
   // Fetch all inventory items directly via API
   // const fetchCartItems = async () => {
   //   try {
@@ -80,55 +115,55 @@ export default function CartDrawer({ isOpen, onClose }) {
   }, [getCartItems]);
 
   // Razorpay payment handler
-  const handlePayment = async () => {
-    // Load Razorpay script
-    const res = await loadRazorpay();
-    if (!res) {
-      alert('Razorpay SDK failed to load. Are you online?');
-      return;
-    }
+  // const handlePayment = async () => {
+  //   // Load Razorpay script
+  //   const res = await loadRazorpay();
+  //   if (!res) {
+  //     alert('Razorpay SDK failed to load. Are you online?');
+  //     return;
+  //   }
 
-    // Place order first to create order in database
-    try {
-      const orderData = await place.mutateAsync();
-      const orderId = orderData.orderId;
+  //   // Place order first to create order in database
+  //   try {
+  //     const orderData = await place.mutateAsync();
+  //     const orderId = orderData.orderId;
 
-      // Initialize Razorpay payment
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder', // Replace with your Razorpay key
-        amount: totalAmount * 100, // Razorpay expects amount in paise
-        currency: 'INR',
-        name: 'Apni Desi Dukaan',
-        description: 'Order Payment',
-        order_id: orderId, // This is the order id created in your backend
-        handler: function (response) {
-          // Payment successful
-          alert('Payment successful!');
-          console.log('Payment successful:', response);
-          // Close the cart drawer
-          onClose();
-        },
-        prefill: {
-          name: 'Customer Name',
-          email: 'customer@example.com',
-          contact: '9999999999',
-        },
-        notes: {
-          address: 'Corporate Office',
-        },
-        theme: {
-          color: '#3399cc',
-        },
-      };
+  //     // Initialize Razorpay payment
+  //     const options = {
+  //       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder', // Replace with your Razorpay key
+  //       amount: totalAmount * 100, // Razorpay expects amount in paise
+  //       currency: 'INR',
+  //       name: 'Apni Desi Dukaan',
+  //       description: 'Order Payment',
+  //       order_id: orderId, // This is the order id created in your backend
+  //       handler: function (response) {
+  //         // Payment successful
+  //         alert('Payment successful!');
+  //         console.log('Payment successful:', response);
+  //         // Close the cart drawer
+  //         onClose();
+  //       },
+  //       prefill: {
+  //         name: 'Customer Name',
+  //         email: 'customer@example.com',
+  //         contact: '9999999999',
+  //       },
+  //       notes: {
+  //         address: 'Corporate Office',
+  //       },
+  //       theme: {
+  //         color: '#3399cc',
+  //       },
+  //     };
 
-      // @ts-ignore
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (error) {
-      console.error('Error placing order:', error);
-      alert('Error placing order. Please try again.');
-    }
-  };
+  //     // @ts-ignore
+  //     const rzp = new window.Razorpay(options);
+  //     rzp.open();
+  //   } catch (error) {
+  //     console.error('Error placing order:', error);
+  //     alert('Error placing order. Please try again.');
+  //   }
+  // };
 
 
   const totalMRP = cartDetails.reduce((sum, item) => sum + item.originalPrice * item.quantity, 0);
@@ -241,9 +276,7 @@ export default function CartDrawer({ isOpen, onClose }) {
           >
             Proceed to Pay →
           </button>
-          <button onClick={async()=>{
-            await place.mutate()
-          }}>
+          <button onClick={handlePayment} className="bg-accent text-white px-6 py-2 rounded-lg font-semibold text-sm shadow-sm">
             place order
           </button>
         </div>

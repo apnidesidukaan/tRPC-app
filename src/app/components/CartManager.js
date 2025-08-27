@@ -25,13 +25,17 @@ export const useCartManager = () => {
 
   // Function to add item to cart based on authentication status
   const addItemToCart = (inventory, qty) => {
-          const data={
-        price:inventory.price,
-        name:inventory.name,
-        quantity:qty,
-        inventoryId: inventory?.id,
-        // ..other requried fields will be here
-      }
+    console.log('Adding item to cart =====', inventory, qty);
+    const data = {
+      price: inventory.price,
+      name: inventory.name,
+      quantity: qty,
+      inventoryId: inventory?.id,
+      vendorId: inventory?.vendorId,
+      image: inventory?.metaImage,
+      inventoryVendorId: inventory?.inventoryVendorId,
+      // ..other requried fields will be here
+    }
     if (session?.user) {
       // console.log(inventory)
       // console.log(data)

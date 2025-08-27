@@ -1,4 +1,5 @@
 import { z } from "zod";
+import InventoryVendorStore from "~/app/_components/ProductDetail/InventoryVendorStore";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
 // import { useSession } from "next-auth/react";
@@ -38,6 +39,9 @@ export const cartRouter = createTRPCRouter({
         quantity: z.number().min(1),
         name: z.string(),
         price: z.number(),
+        vendorId: z.string(),
+        inventoryVendorId: z.string(),
+        image: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -50,7 +54,7 @@ export const cartRouter = createTRPCRouter({
       let cart = await db.cart.findFirst({
         where: { userId, status: "active" },
       });
-
+       
       if (!cart) {
         cart = await db.cart.create({
           data: { userId, status: "active" },
@@ -61,13 +65,15 @@ export const cartRouter = createTRPCRouter({
       const existing = await db.cartItem.findFirst({
         where: { cartId: cart.id, inventoryId: input.inventoryId },
       });
-
+      
       if (existing) {
         return db.cartItem.update({
           where: { id: existing.id },
           data: { quantity: existing.quantity + input.quantity },
         });
       }
+      // get the vendor id  using the global inventory 
+      db.inventoryVendor
 
       return ctx.db.cartItem.create({
         data: {
@@ -75,7 +81,10 @@ export const cartRouter = createTRPCRouter({
           inventoryId: input.inventoryId,
           quantity: input.quantity,
           name: input.name,
+          vendorId: input.vendorId,
+          inventoryVendorId: input.inventoryVendorId,
           price: input.price,
+          image: input.image,
         },
       });
     }),

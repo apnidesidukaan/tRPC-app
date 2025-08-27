@@ -81,7 +81,7 @@ export default function InventoryList({ inventoryItem }) {
       newSelected.add(itemId);
       setQuantities({ ...quantities, [itemId]: quantity });
       // Add item to cart when selected
-      // console.log(item, quantity)
+      // console.log('item to be added to cart =====', item, quantity);
       addItemToCart(item, quantity);
     }
     setSelectedItems(newSelected);
@@ -217,7 +217,6 @@ export default function InventoryList({ inventoryItem }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-6">
           {inventoryItem?.map((inv) => {
             // console.log('==============', quantities[inv.id]);
-
             const isSelected = selectedItems.has(inv.id);
             // const quantity = quantities[inv.id] || 1;
             const quantity = cartMatches.find(cart => cart.inventoryId === inv.id)?.quantity || 0;

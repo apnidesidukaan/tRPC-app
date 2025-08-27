@@ -217,13 +217,17 @@ export const productRouter = createTRPCRouter({
       });
       //now fetch the vendory inventory using inventory global
       const inventoryIds = inventories.map((invent) => invent.id);
-      const vendorInventoriesId = (await db.inventoryVendor.findMany({
+      const vendorInventories = (await db.inventoryVendor.findMany({
         where: { inventoryId: { in: inventoryIds } }, // filter by inventoryIds
-      })).map((invent) => invent.inventoryId);
+      })).map((invent) => ({inventoryId:invent.inventoryId,vendorId:invent.vendorId,id:invent.id}));
 
-      let vendorInventory=inventories.filter((invent) => vendorInventoriesId.includes(invent.id));
-      // Now you have the vendorInventories related to the product
-      return vendorInventory;
+      let result=[];
+     for(let i=0;i<inventories.length;i++){
+      const vendInv=vendorInventories.find((vendInv) => vendInv.inventoryId === inventories[i]!.id);
+      if(vendInv)
+       result.push({...inventories[i], vendorId: vendInv.vendorId, inventoryVendorId: vendInv.id});
+     }
+     return result;
     }),
 
   getInventoryByProductId: publicProcedure
