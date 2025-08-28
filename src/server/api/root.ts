@@ -12,6 +12,7 @@ import { orderRouter } from "./routers/order";
 import { leadRouter } from "./routers/lead";
 import { vendorRouter } from "./routers/vendor";
 import { discoveryRouter } from "./routers/discovery";
+import { tripRouter } from "./routers/trip";
 
 /**
  * This is the primary router for your server.
@@ -32,6 +33,7 @@ export const appRouter = createTRPCRouter({
   lead: leadRouter,
   vendor: vendorRouter,
   discovery: discoveryRouter,
+  trip: tripRouter,
 });
 
 // export type definition of API

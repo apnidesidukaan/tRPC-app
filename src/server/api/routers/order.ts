@@ -9,7 +9,7 @@ const razorpay = new Razorpay({
 })
 
 export const orderRouter = createTRPCRouter({
-  placeOrder: protectedProcedure.mutation(async ({ ctx, input }) => {
+  getRazorPayId: protectedProcedure.mutation(async ({ ctx, input }) => {
     try {
       const userId = ctx.session.user.id;
 
@@ -80,7 +80,7 @@ export const orderRouter = createTRPCRouter({
       //   },
       // });
       // first clear the cart items in the cart once the order has been placed
-      ctx.db.cartItem.deleteMany({ where: { cartId: { in: carts.map(({ id }) => id) } } });
+      // ctx.db.cartItem.deleteMany({ where: { cartId: { in: carts.map(({ id }) => id) } } });
 
       return { success: true, orderId: razorpayOrder?.id };
     } catch (err) {
@@ -89,22 +89,7 @@ export const orderRouter = createTRPCRouter({
     }
   }),
 
-  getRazorPayId: publicProcedure.input(z.object({
-    amount: z.number().min(1)
-  })).query(async ({ ctx, input }) => {
-    try {
-      const { amount } = input;
-      const razorpayOrder = await razorpay.orders.create({
-        amount, // in paise
-        currency: "INR",
-        receipt: "receipt_" + Date.now(), // optional, for your own tracking
-      });
-      return { success: true, orderId: razorpayOrder.id };
-    } catch (err) {
-      console.error(err);
-      throw new Error("Failed to create Razorpay order");
-    }
-  }),
+ 
   // this procedure is yet in developement
   createOrders: protectedProcedure
     .input(
@@ -121,6 +106,8 @@ export const orderRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       try {
         // ✅ Get cart and items
+                  console.log(" ============ kya naaali jaam hao ??: ========",input)
+        
         const cart = await ctx.db.cart.findUnique({
           where: { id: input.cartId },
           include: {
