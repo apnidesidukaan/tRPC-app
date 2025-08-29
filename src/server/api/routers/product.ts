@@ -219,14 +219,14 @@ export const productRouter = createTRPCRouter({
       const inventoryIds = inventories.map((invent) => invent.id);
       const vendorInventories = (await db.inventoryVendor.findMany({
         where: { inventoryId: { in: inventoryIds } }, // filter by inventoryIds
-      })).map((invent) => ({inventoryId:invent.inventoryId,vendorId:invent.vendorId,id:invent.id}));
-
+      }));
       let result=[];
-     for(let i=0;i<inventories.length;i++){
-      const vendInv=vendorInventories.find((vendInv) => vendInv.inventoryId === inventories[i]!.id);
-      if(vendInv)
-       result.push({...inventories[i], vendorId: vendInv.vendorId, inventoryVendorId: vendInv.id});
+     for(let i=0;i<vendorInventories.length;i++){
+      const invent=inventories.find((invent) => vendorInventories[i]!.inventoryId === invent!.id);
+      if(invent)
+       result.push({...invent, vendorId: vendorInventories[i]!.vendorId, inventoryVendorId: vendorInventories[i]!.id,stock:vendorInventories[i]!.stock,sku:vendorInventories[i]!.sku,price:vendorInventories[i]!.price,lockStockThreshold:vendorInventories[i]!.lockStockThreshold});
      }
+     console.log(" ======= inventoies with vendor id ======= ",result);
      return result;
     }),
 

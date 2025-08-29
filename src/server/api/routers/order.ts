@@ -106,17 +106,19 @@ export const orderRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       try {
         // ✅ Get cart and items
-                  console.log(" ============ kya naaali jaam hao ??: ========",input)
         
         const cart = await ctx.db.cart.findUnique({
           where: { id: input.cartId },
           include: {
             items: {
-              include: { inventory: true },
+              include: { inventoryVendorId: true },
             },
           },
         });
 
+
+                          console.log(" ============ kya naaali jaam hao ??: ========",cart)
+       
         if (!cart || cart.items.length === 0) {
           throw new Error("Cart not found or empty");
         }
@@ -174,6 +176,7 @@ export const orderRouter = createTRPCRouter({
         throw new Error("Failed to create order");
       }
     }),
+    
 });
 
 // I learnt that exporting only the type of router restricts the client from accessing the code
