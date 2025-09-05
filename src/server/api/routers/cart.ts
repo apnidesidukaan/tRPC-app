@@ -13,34 +13,38 @@ export const cartRouter = createTRPCRouter({
 
   get: publicProcedure.query(async ({ ctx }) => {
     const userId = ctx.session?.user?.id;
+    console.log(' yeha aaua ?? ', userId);
 
     return ctx.db.cart.findFirst({
-      where: { userId, status: "active" },
-      include: {
-        items: {
-          include: {
-            inventory: {
-              include: {
-                product: true, // full product info for UI
-              },
-            },
-          },
-        },
+      where: {
+        userId,
+        status: "active"
       },
+      // include: {
+      //   items: {
+      //     include: {
+      //       inventory: {
+      //         include: {
+      //           product: true, // full product info for UI
+      //         },
+      //       },
+      //     },
+      //   },
+      // },
     });
   }),
 
   // ➕ Add item to cart (or update if exists)
-  
+
   addItem: publicProcedure
     .input(
       z.object({
         inventoryId: z.string(),
-        quantity: z.number().min(1),
+        quantity: z.number(),
         name: z.string(),
         price: z.number(),
         vendorId: z.string(),
-        inventoryVendorId: z.string(),
+        // inventoryVendorId: z.string(),
         image: z.string(),
       })
     )
@@ -54,7 +58,7 @@ export const cartRouter = createTRPCRouter({
       let cart = await db.cart.findFirst({
         where: { userId, status: "active" },
       });
-       
+
       if (!cart) {
         cart = await db.cart.create({
           data: { userId, status: "active" },
@@ -65,11 +69,11 @@ export const cartRouter = createTRPCRouter({
       const existing = await db.cartItem.findFirst({
         where: { cartId: cart.id, inventoryId: input.inventoryId },
       });
-      
+
       if (existing) {
         return db.cartItem.update({
           where: { id: existing.id },
-          data: { quantity: existing.quantity + input.quantity },
+          data: { quantity: existing.quantity + (input.quantity) },
         });
       }
       // get the vendor id  using the global inventory 
@@ -82,7 +86,7 @@ export const cartRouter = createTRPCRouter({
           quantity: input.quantity,
           name: input.name,
           vendorId: input.vendorId,
-          inventoryVendorId: input.inventoryVendorId,
+          // inventoryVendorId: input.inventoryVendorId,
           price: input.price,
           image: input.image,
         },
@@ -128,4 +132,30 @@ export const cartRouter = createTRPCRouter({
       data: { status: "checked_out" },
     });
   }),
+
+
+  getCartItemsByCartId: protectedProcedure
+    .input(z.string()) // expects cartId as string
+    .query(async ({ ctx, input: cartId }) => {
+      try {
+        // console.log(' yeha aaua cad?? ', cartId);
+
+        const items = await ctx.db.cartItem.findMany({
+          where: { cartId: cartId },
+          // include: {
+          //   inventory: true,  // if you want inventory details
+          //   cart: true,       // if you want cart details
+          // },
+        });
+
+        return items;
+      } catch (error) {
+        console.error("Error fetching cart items:", error);
+        throw new Error("Unable to fetch cart items");
+      }
+    }),
+
+
+
+
 });

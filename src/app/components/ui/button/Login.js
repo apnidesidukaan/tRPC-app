@@ -6,12 +6,13 @@ import { User } from 'lucide-react';
 import LoginModal from '../modal/Login';
 // import { useAuthToken } from '../../../hooks/useAuthToken';
 import AccountModal from '../modal/Account';
+import { useSession } from 'next-auth/react';
 
 const LoginButton = () => {
-    // const { token } = useAuthToken();
+    const { data: session } = useSession();
     const [openCart, setOpenCart] = useState(false);
-    // console.log('token hai =======================', token);
-    const token = null
+    // console.log('token hai =======================', session?.user);
+    // const token = null
 
     return (
         <>
@@ -21,12 +22,12 @@ const LoginButton = () => {
                 className="flex items-center bg-gradient-to-r from-[#800020]  to-[#b22222] text-[#ffffff] border border-[#ffdb96] font-bold ring-2 px-4 py-2 rounded-xl hover:shadow-lg transition-all"
             >
                 <User className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">{token !== null ? 'Account' : 'Log In'}</span>
+                <span className="hidden sm:inline">{session !== null ? 'Account' : 'Log In'}</span>
 
             </button >
 
 
-            {token === null ? <LoginModal
+            {session === null ? <LoginModal
                 isOpen={openCart}
                 onClose={() => setOpenCart(false)}
             /> : <AccountModal

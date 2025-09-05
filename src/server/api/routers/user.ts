@@ -69,9 +69,32 @@ export const userRouter = createTRPCRouter({
   getProfile: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
-      include: { address: true, bankAccountDetails: true, role: true, business: true }
+      // include: { address: true, bankAccountDetails: true, role: true, business: true }
     });
   }),
+
+
+  getOrders: protectedProcedure.query(async ({ ctx }) => {
+
+    const order = await ctx.db.order.findMany({
+      where: { customerId: ctx.session.user.id },
+    });
+
+
+    // console.log('sessionId ------', ctx.session.user.id);
+    const orderItems = await ctx.db.orderItem.findMany({
+      where: { orderId: order?.id },
+    });
+
+    return {
+      status: 200,
+      message: "Order fetched Successfully .",
+      order,
+      orderItems,
+    }
+  }),
+
+
 
   // 4. Update Profile
   updateProfile: protectedProcedure

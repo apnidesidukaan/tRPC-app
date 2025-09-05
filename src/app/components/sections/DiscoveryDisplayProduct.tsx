@@ -6,7 +6,7 @@ import ProductCard from "../ui/card/ProductCard";
 export default function DiscoveryDisplayProduct({ id }) {
   const { data } = api.product.getManyByIds.useQuery({ ids: id, type: 'category', });
 
-console.log(data);
+// console.log(data);
 
 
 

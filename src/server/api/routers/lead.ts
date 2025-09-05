@@ -106,7 +106,7 @@ export const leadRouter = createTRPCRouter({
     .query(async ({ input }) => {
       // Fetch all module IDs for this lead from the junction table
       const leadModules = await db.requestedModule.findMany({
-        where: { leadId: input.leadId },
+        where: { requester: input.leadId },
         select: { moduleId: true }, // just get the module IDs
       });
 

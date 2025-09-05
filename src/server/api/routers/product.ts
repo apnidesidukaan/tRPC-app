@@ -207,7 +207,7 @@ export const productRouter = createTRPCRouter({
   getVendorInventoryByProductId: publicProcedure
     .input(z.string()) // expecting productId as string
     .query(async ({ input }) => {
-      let  inventories = await db.inventory.findMany({
+      let inventories = await db.inventory.findMany({
         where: {
           productId: input, // filter by productId
         },
@@ -220,14 +220,24 @@ export const productRouter = createTRPCRouter({
       const vendorInventories = (await db.inventoryVendor.findMany({
         where: { inventoryId: { in: inventoryIds } }, // filter by inventoryIds
       }));
-      let result=[];
-     for(let i=0;i<vendorInventories.length;i++){
-      const invent=inventories.find((invent) => vendorInventories[i]!.inventoryId === invent!.id);
-      if(invent)
-       result.push({...invent, vendorId: vendorInventories[i]!.vendorId, inventoryVendorId: vendorInventories[i]!.id,stock:vendorInventories[i]!.stock,sku:vendorInventories[i]!.sku,price:vendorInventories[i]!.price,lockStockThreshold:vendorInventories[i]!.lockStockThreshold});
-     }
-     console.log(" ======= inventoies with vendor id ======= ",result);
-     return result;
+      let result = [];
+      for (let i = 0; i < vendorInventories.length; i++) {
+        const invent = inventories.find((invent) => vendorInventories[i]!.inventoryId === invent!.id);
+        if (invent)
+          result.push({
+            vendorId: vendorInventories[i]!.vendorId,
+            id: vendorInventories[i]!.id,
+            stock: vendorInventories[i]!.stock,
+            sku: vendorInventories[i]!.sku,
+            price: vendorInventories[i]!.price,
+            image: invent?.metaImage,
+            name: invent?.name,
+            // lockStockThreshold: vendorInventories[i]!.lockStockThreshold
+          }
+          );
+      }
+      console.log(" ======= inventoies with vendor id ======= ", result);
+      return result;
     }),
 
   getInventoryByProductId: publicProcedure

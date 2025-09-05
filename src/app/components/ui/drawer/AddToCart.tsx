@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,6 +8,40 @@ import { FiClock, FiTruck, FiBox, FiTag } from "react-icons/fi";
 import CartItem from "../CartItem/drawer";
 import { useCartManager } from "~/app/components/CartManager";
 import { api } from "~/trpc/react";
+import { useSession } from "next-auth/react";
+const haversineDistance = (coords1, coords2) => {
+
+  const toRad = (x) => (x * Math.PI) / 180;
+  const lat1 = coords1?.lat;
+  const lon1 = coords1?.lng;
+  const lat2 = coords2?.lat;
+  const lon2 = coords2?.lng;
+
+  if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+    console.warn('Invalid coordinates provided to haversineDistance:', coords1, coords2);
+    return Infinity;
+  }
+
+  const R = 6371e3; // metres
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // in meters
+};
+
+
+
+
+
+
+
 
 // Razorpay script loader
 const loadRazorpay = () => {
@@ -19,8 +55,60 @@ const loadRazorpay = () => {
 };
 
 export default function CartDrawer({ isOpen, onClose }) {
-  const [cartDetails, setCartDetails] = useState<any[]>([]);
-  const { getCartItems } = useCartManager();
+
+  const { data: cartDetails } = api.cart.get.useQuery();
+
+
+
+  const { data: cartItems, isLoading } = api.cart.getCartItemsByCartId.useQuery(String(cartDetails?.id));
+  const { data: user } = api.user.getProfile.useQuery();
+  const { data: store } = api.store.getById.useQuery(
+    String(cartItems?.[0]?.vendorId),
+    {
+      enabled: !!cartItems?.[0]?.vendorId, // ✅ only triggers if vendorId exists
+    }
+  );
+
+
+
+  // Bill Calculations
+  const totalMRP = cartItems?.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
+  );
+  const totalDiscounted = cartItems?.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
+  );
+  const savings = totalMRP - totalDiscounted;
+
+
+
+  let distance = haversineDistance(user?.address?.geo, store?.address?.geo)
+  console.log('distance =========================  ======', distance);
+
+  const { data: priceDetails, isLoading: priceLoading } = api.delivery.calculatePrice.useQuery({
+    distance: distance/1000, // ← later replace with actual distance from user’s address
+    cartValue: totalDiscounted ?? 0,
+    express: false, // or true if they choose express delivery
+  }, {
+    enabled: !!totalDiscounted, // only run if cartValue is ready
+  });
+
+
+
+
+  const deliveryCharge = priceDetails?.deliveryCharge ?? 0;
+  const platformFee = priceDetails?.platformFee ?? 0;
+  const handlingCharge = 4; // still your static value
+  const totalAmount = (priceDetails?.finalPrice ?? totalDiscounted ?? 0) + handlingCharge;
+
+
+
+
+  // const [cartDetails, setCartDetails] = useState<any[]>([]);
+  const { getCartItems, addItemToCart } = useCartManager();
+  const { data: session } = useSession();
 
   // tRPC mutation
   const place = api.order.getRazorPayId.useMutation({
@@ -28,14 +116,19 @@ export default function CartDrawer({ isOpen, onClose }) {
     onError: (error) => console.error("Error placing order:", error),
   });
 
-  useEffect(() => {
-    setCartDetails(getCartItems());
-  }, [getCartItems]);
+
+
+
+
+
 
   // Payment handler
 
   const createOrder = api.order.createOrders.useMutation();
   const createTrip = api.trip.create.useMutation();
+  const createStatusHistory = api.order.createStatusHistory.useMutation();
+  const createTransaction = api.transaction.create.useMutation();
+  const getVendorWallet = api.wallet.get.useMutation();
 
   const handlePayment = async () => {
     const res = await loadRazorpay();
@@ -51,13 +144,14 @@ export default function CartDrawer({ isOpen, onClose }) {
       return;
     }
     try {
-      const orderData = await place.mutateAsync(); // backend should return { id, amount }
-      console.log(orderData);
+      const orderData = await place.mutateAsync({ amount: totalAmount * 100 });
+      // console.log(orderData);
 
       if (!orderData?.orderId) {
         alert("Order creation failed. Please try again.");
         return;
       }
+      console.log('priceDetails ----', session);
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -68,35 +162,84 @@ export default function CartDrawer({ isOpen, onClose }) {
         order_id: orderData.orderId,
         image: "https://your-logo-url.com/logo.png",
         prefill: {
-          name: process.env.NEXT_PUBLIC_USER_NAME || "Guest User",
-          email: process.env.NEXT_PUBLIC_USER_EMAIL || "guest@example.com",
-          contact: process.env.NEXT_PUBLIC_USER_CONTACT || "9999999999",
+          name: session?.user?.name || "Guest User",
+          email: session?.user?.email || "guest@example.com",
+          contact: session?.user?.mobile || "9999999999",
         },
-        theme: { color: "#b28800ff" },
+        theme: { color: "#6e241b" },
         handler: async function (response: any) {
-          const order = await createOrder.mutateAsync({
-            cartId: "68a8372d417aa5f5c88f32ee",
-            addressId: "68a8372d417aa5f5c88f32ee",
-            vendorId: "68a8372d417aa5f5c88f32e2",
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-            paymentMethod: "upi",
-          });
+          try {
+            // 🛒 3. Group cartItems by vendorId
+            const vendorGroups = cartItems?.reduce((acc: any, item: any) => {
+              if (!acc[item.vendorId]) acc[item.vendorId] = [];
+              acc[item.vendorId].push(item);
+              return acc;
+            }, {});
 
-          console.log(" ============  Payment successful: ========", order);
+            // 📝 4. Loop over each vendor and create Order + Trip
+            for (const [vendorId, items] of Object.entries(vendorGroups)) {
+              console.log("✅ ======== data:", items);
+              const order = await createOrder.mutateAsync({
+                cartId: String(cartDetails?.id),
+                addressId: "68a8372d417aa5f5c88f32ee", // dynamic later
+                vendorId,
+                cartItems: items,
+                // items: items?.map((i: any) => ({
+                //   productId: i.productId,
+                //   quantity: i.quantity,
+                // })),
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                paymentMethod: "upi",
+              });
 
-          const trip = await createTrip.mutateAsync({
-            cartId: "68a8372d417aa5f5c88f32ee",
-            addressId: "68a8372d417aa5f5c88f32ee",
-            vendorId: "68a8372d417aa5f5c88f32e2",
-            orderId: order.id, // link Trip with created Order
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-            paymentMethod: "upi",
-          });
-          onClose();
+              console.log("✅ Order created:", order);
+
+              const trip = await createTrip.mutateAsync({
+                cartId: cartDetails?.id,
+                addressId: "68a8372d417aa5f5c88f32ee",
+                vendorId,
+                orderId: order.id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                paymentMethod: "upi",
+              });
+
+              console.log("🚚 Trip created:", trip);
+
+              const wallet = await getVendorWallet.mutateAsync({
+                userId: vendorId as string,
+                userModel: "vendor",
+              });
+
+              console.log("💳 Wallet fetched or created:", wallet);
+
+              const transaction = await createTransaction.mutateAsync({
+                type: "credit",
+                amount: totalAmount, // ideally split per vendor
+                sourceType: "order",
+                sourceRef: order.id,
+                description: `Payment received for Order #${order.id}`,
+                walletId: wallet.id, // ✅ pass the wallet id here
+              });
+
+              console.log("transaction Created -----:", transaction);
+
+              const statusHistory = await createStatusHistory.mutateAsync({
+                vendorId,
+                orderId: order.id,
+
+              });
+
+              console.log("Status history mainated -----:", statusHistory);
+            }
+
+            onClose();
+          } catch (err) {
+            console.error("❌ Error creating vendor orders/trips:", err);
+          }
         },
         modal: {
           ondismiss: function () {
@@ -113,25 +256,21 @@ export default function CartDrawer({ isOpen, onClose }) {
     }
   };
 
-  // Bill Calculations
-  const totalMRP = cartDetails.reduce(
-    (sum, item) => sum + item.originalPrice * item.quantity,
-    0,
-  );
-  const totalDiscounted = cartDetails.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  );
-  const savings = totalMRP - totalDiscounted;
-  const deliveryCharge = 25;
-  const handlingCharge = 4;
-  const totalAmount = totalDiscounted + deliveryCharge + handlingCharge;
+
+  // const deliveryCharge = 25;
+  // const handlingCharge = 4;
+  // const totalAmount = totalDiscounted + deliveryCharge + handlingCharge;
+
+
+
+
+
+
 
   return (
     <div
-      className={`bg-accent fixed top-0 right-0 z-[9999] flex h-screen w-full max-w-sm transform flex-col transition-transform duration-300 ${
-        isOpen ? "translate-x-0" : "translate-x-full"
-      }`}
+      className={`bg-accent fixed top-0 right-0 z-[9999] flex h-screen w-full max-w-sm transform flex-col transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
     >
       {/* Header */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-4">
@@ -155,15 +294,20 @@ export default function CartDrawer({ isOpen, onClose }) {
             <span className="font-medium">Delivery in 8 minutes</span>
           </div>
           <div className="text-muted ml-6 text-xs">
-            Shipment of {cartDetails.length} item(s)
+            Shipment of {cartItems?.length} item(s)
           </div>
         </div>
 
         <div className="max-h-[calc(100vh-360px)] space-y-4 overflow-y-auto bg-white p-4">
-          {cartDetails.length === 0 ? (
+          {cartItems?.length === 0 ? (
             <p className="text-center text-gray-500">Your cart is empty...</p>
           ) : (
-            cartDetails.map((item) => <CartItem key={item.id} item={item} />)
+            cartItems?.map((item) =>
+              <CartItem
+                key={item.id}
+                item={item}
+                addItem={(ite) => addItemToCart(ite, 1)}
+              />)
           )}
         </div>
 
@@ -196,6 +340,13 @@ export default function CartDrawer({ isOpen, onClose }) {
 
           <div className="text-muted flex justify-between">
             <div className="flex items-center gap-2">
+              <FiTag /> Platform fee
+            </div>
+            <div>₹{platformFee}</div>
+          </div>
+
+          <div className="text-muted flex justify-between">
+            <div className="flex items-center gap-2">
               <FiBox /> Handling charge
             </div>
             <div>₹{handlingCharge}</div>
@@ -210,7 +361,7 @@ export default function CartDrawer({ isOpen, onClose }) {
 
         <div className="flex items-center justify-between border-t bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
           <span>Your total savings</span>
-          <span>₹{savings}</span>
+          {/* <span>₹{savings}</span> */}
         </div>
       </div>
 

@@ -1,84 +1,115 @@
-import React, { useState, useEffect } from 'react';
-import { Wallet, Plus, Minus, Eye, EyeOff, RefreshCw, Clock, Lock } from 'lucide-react';
-// import { fetchVendorWallet } from '../../../../api/wallet';
-import { useVendorWallet } from '../../../../controllers/wallet';
-import { useParams } from 'next/navigation';
+"use client";
+
+import React, { useState, useEffect } from "react";
+import {
+  Wallet,
+  Plus,
+  Minus,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Clock,
+  Lock,
+} from "lucide-react";
+import { useParams } from "next/navigation";
+import { api } from "~/trpc/react";
 
 const MyWallet = () => {
-  const { type, id } = useParams(); // Get itemId from URL
+  const { id } = useParams(); // Vendor/User ID
+  const getWallet = api.wallet.get.useMutation();
 
-  const { vendorWallet } = useVendorWallet(id)
-
-  const [walletData, setWalletData] = useState(vendorWallet);
-
-
-  useEffect(() => {
-    setWalletData(vendorWallet);
-  }, [vendorWallet]);
-
-
+  const [walletData, setWalletData] = useState<any>(null);
   const [showBalance, setShowBalance] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [amount, setAmount] = useState('');
-  const [transactionType, setTransactionType] = useState('add');
+  const [activeTab, setActiveTab] = useState("overview");
+  const [amount, setAmount] = useState("");
+  const [transactionType, setTransactionType] = useState("add");
 
-  const availableBalance = walletData?.balance - walletData?.lockedAmount;
-  console.log('vendorWallet', walletData);
+  // 🔹 Fetch wallet on mount
+  useEffect(() => {
+    const fetchWallet = async () => {
+      if (!id) return;
+      try {
+        const wallet = await getWallet.mutateAsync({
+          userId: String(id),
+          userModel: "vendor",
+        });
+        setWalletData(wallet);
+      } catch (err) {
+        console.error("❌ Error fetching wallet:", err);
+      }
+    };
+
+    fetchWallet();
+  }, [id]);
+
+  const availableBalance =
+    (walletData?.balance || 0) - (walletData?.lockedAmount || 0);
 
   const handleRefresh = async () => {
+    if (!id) return;
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setWalletData(prev => ({
-        ...prev,
-        updatedAt: new Date().toISOString()
-      }));
+    try {
+      const wallet = await getWallet.mutateAsync({
+        userId: String(id),
+        userModel: "vendor",
+      });
+      setWalletData(wallet);
+    } catch (err) {
+      console.error("❌ Refresh failed:", err);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleTransaction = () => {
     const transactionAmount = parseFloat(amount);
     if (!transactionAmount || transactionAmount <= 0) return;
 
-    setWalletData(prev => ({
+    setWalletData((prev: any) => ({
       ...prev,
-      balance: transactionType === 'add'
-        ? prev.balance + transactionAmount
-        : Math.max(0, prev.balance - transactionAmount),
-      updatedAt: new Date().toISOString()
+      balance:
+        transactionType === "add"
+          ? prev.balance + transactionAmount
+          : Math.max(0, prev.balance - transactionAmount),
+      updatedAt: new Date().toISOString(),
     }));
-    setAmount('');
+    setAmount("");
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+    }).format(amount || 0);
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('en-IN', {
-      dateStyle: 'medium',
-      timeStyle: 'short'
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short",
     });
+
+  const getUserModelColor = (model: string) => {
+    const colors: Record<string, string> = {
+      customer: "bg-blue-100 text-blue-800",
+      vendor: "bg-green-100 text-green-800",
+      deliveryAgent: "bg-orange-100 text-orange-800",
+      areaManager: "bg-purple-100 text-purple-800",
+    };
+    return colors[model] || "bg-gray-100 text-gray-800";
   };
 
-  const getUserModelColor = (model) => {
-    const colors = {
-      'customer': 'bg-blue-100 text-blue-800',
-      'vendor': 'bg-green-100 text-green-800',
-      'deliveryAgent': 'bg-orange-100 text-orange-800',
-      'areaManager': 'bg-purple-100 text-purple-800'
-    };
-    return colors[model] || 'bg-gray-100 text-gray-800';
-  };
+  if (!walletData) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-500">Loading wallet...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className=" mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div className="mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
@@ -93,7 +124,11 @@ const MyWallet = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getUserModelColor(walletData?.userModel)}`}>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${getUserModelColor(
+                  walletData?.userModel
+                )}`}
+              >
                 {walletData?.userModel}
               </span>
               <button
@@ -101,7 +136,9 @@ const MyWallet = () => {
                 disabled={isLoading}
                 className="bg-white bg-opacity-20 hover:bg-opacity-30 p-2 rounded-full transition-all"
               >
-                <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`}
+                />
               </button>
             </div>
           </div>
@@ -112,36 +149,52 @@ const MyWallet = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-green-800">Total Balance</h3>
+                <h3 className="text-sm font-medium text-green-800">
+                  Total Balance
+                </h3>
                 <button
                   onClick={() => setShowBalance(!showBalance)}
                   className="text-green-600 hover:text-green-800"
                 >
-                  {showBalance ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  {showBalance ? (
+                    <Eye className="h-4 w-4" />
+                  ) : (
+                    <EyeOff className="h-4 w-4" />
+                  )}
                 </button>
               </div>
               <p className="text-2xl font-bold text-green-700">
-                {showBalance ? formatCurrency(walletData?.balance) : '••••••'}
+                {showBalance
+                  ? formatCurrency(walletData?.balance)
+                  : "••••••"}
               </p>
             </div>
 
             <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-6 rounded-xl border border-orange-200">
               <div className="flex items-center space-x-2 mb-2">
                 <Lock className="h-4 w-4 text-orange-600" />
-                <h3 className="text-sm font-medium text-orange-800">Locked Amount</h3>
+                <h3 className="text-sm font-medium text-orange-800">
+                  Locked Amount
+                </h3>
               </div>
               <p className="text-2xl font-bold text-orange-700">
-                {showBalance ? formatCurrency(walletData?.lockedAmount) : '••••••'}
+                {showBalance
+                  ? formatCurrency(walletData?.lockedAmount)
+                  : "••••••"}
               </p>
             </div>
 
             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl border border-blue-200">
               <div className="flex items-center space-x-2 mb-2">
                 <Wallet className="h-4 w-4 text-blue-600" />
-                <h3 className="text-sm font-medium text-blue-800">Available Balance</h3>
+                <h3 className="text-sm font-medium text-blue-800">
+                  Available Balance
+                </h3>
               </div>
               <p className="text-2xl font-bold text-blue-700">
-                {showBalance ? formatCurrency(availableBalance) : '••••••'}
+                {showBalance
+                  ? formatCurrency(availableBalance)
+                  : "••••••"}
               </p>
             </div>
           </div>
@@ -175,15 +228,15 @@ const MyWallet = () => {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">User ID:</span>
-                      <span className="font-mono text-sm">{walletData?.userId.slice(-8)}...</span>
+                      {/* <span className="font-mono text-sm">{walletData?.userId.slice(-8)}...</span> */}
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">User Type:</span>
-                      <span className="font-medium">{walletData?.userModel}</span>
+                      {/* <span className="font-medium">{walletData?.userModel}</span> */}
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Created:</span>
-                      <span className="text-sm">{formatDate(walletData?.createdAt)}</span>
+                      {/* <span className="text-sm">{formatDate(walletData?.createdAt)}</span> */}
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Last Updated:</span>

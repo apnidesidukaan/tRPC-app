@@ -13,6 +13,11 @@ import { leadRouter } from "./routers/lead";
 import { vendorRouter } from "./routers/vendor";
 import { discoveryRouter } from "./routers/discovery";
 import { tripRouter } from "./routers/trip";
+import { storeRouter } from "./routers/store";
+import { walletRouter } from "./routers/wallet";
+import { deliveryRouter } from "./routers/delivery";
+import { platformConfigRouter } from "./routers/platform";
+import  { transactionRouter } from "./routers/transaction";
 
 /**
  * This is the primary router for your server.
@@ -34,6 +39,11 @@ export const appRouter = createTRPCRouter({
   vendor: vendorRouter,
   discovery: discoveryRouter,
   trip: tripRouter,
+  store: storeRouter,
+  wallet: walletRouter,
+  delivery: deliveryRouter,
+  platform: platformConfigRouter,
+  transaction: transactionRouter
 });
 
 // export type definition of API

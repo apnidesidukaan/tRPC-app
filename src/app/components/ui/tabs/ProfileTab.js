@@ -17,23 +17,24 @@ import { ProfileNavigationTabs } from "./profileTabs/ProfileNavigationTabs";
 import { ProfileHeader } from "./profileTabs/ProfileHeader";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import MyWallet from "./profileTabs/Wallet";
 // import MyWallet from "./profileTabs/Wallet";
 
 // ========================================================================================
 
 const ProfileTabs = ({ }) => {
-    // const profileData = []
+    // const data = []
     const params = useParams();  // gets the dynamic segments
     // const { type, id } = params;
 
-    const { data: profileData } = api.vendor.getProfile.useQuery({ vendorId: String(params.id) });
+    const { data } = api.vendor.getProfile.useQuery({ vendorId: String(params.id) });
 
-    console.log('vendors========', profileData);
+    // console.log('vendors========',data?.profile);
     // ========================================================================================
-    // console.log('ProfileTabs component initialized with profileData:', profileData);
+    // console.log('ProfileTabs component initialized with data:', data);
 
 
-    // const [rowData, setRowData] = useState(profileData);
+    // const [rowData, setRowData] = useState(data);
     const [loadingLead, setLoadingLead] = useState(false);
     const [leadError, setLeadError] = useState(null);
 
@@ -63,32 +64,32 @@ const ProfileTabs = ({ }) => {
     }
 
 
-    const {
-        name,
-        email,
-        mobile,
-        address,
-        companyName,
-        leadType,
-        source,
-        status,
-        details = {},
-        modules = [],
-        createdAt,
-        updatedAt,
-    } = profileData?.profile;
+    // const {
+    //     name,
+    //     email,
+    //     mobile,
+    //     address,
+    //     companyName,
+    //     leadType,
+    //     source,
+    //     status,
+    //     details = {},
+    //     modules = [],
+    //     createdAt,
+    //     updatedAt,
+    // } = data?.profile;
 
     const tabContent = {
         overview: (
             <OverviewTabContent
-                companyName={companyName}
-                leadType={leadType}
-                source={source}
-                email={email}
-                phone={mobile}
-                address={address}
-                createdAt={createdAt}
-                updatedAt={updatedAt}
+                companyName={data?.profile?.companyName}
+                leadType={data?.profile?.leadType}
+                source={data?.profile?.source}
+                email={data?.profile?.email}
+                phone={data?.profile?.mobile}
+                address={data?.profile?.address}
+                createdAt={data?.profile?.createdAt}
+                updatedAt={data?.profile?.updatedAt}
             />
             // <EmptyTabContent
             //     icon={FaClipboardList}
@@ -96,8 +97,8 @@ const ProfileTabs = ({ }) => {
             //     message="Tasks related to this lead will appear here."
             // />
         ),
-        details: <DetailsTabContent details={profileData} />,
-        modules: <ModulesTabContent modules={profileData} />,
+        details: <DetailsTabContent details={data} />,
+        modules: <ModulesTabContent modules={data} />,
         tasks: (
             <EmptyTabContent
                 icon={FaClipboardList}
@@ -127,16 +128,16 @@ const ProfileTabs = ({ }) => {
             />
         ),
         waalet: (
-            <EmptyTabContent
-                icon={FaCog}
-                title="Settings"
-                message="Settings specific to this lead can be configured here."
-            />
-            // <MyWallet
-            //     icon={FaCreditCard}
-            //     title="Wallet Information"
-            //     message="Wallet details will be displayed here."
+            // <EmptyTabContent
+            //     icon={FaCog}
+            //     title="Settings"
+            //     message="Settings specific to this lead can be configured here."
             // />
+            <MyWallet
+                icon={FaCreditCard}
+                title="Wallet Information"
+                message="Wallet details will be displayed here."
+            />
         ),
     };
     // ========================================================================================
@@ -144,7 +145,7 @@ const ProfileTabs = ({ }) => {
     return (
         <div className="w-[400px] sm:w-full md:w-[700px] lg:w-full overflow-x-auto p-2">
             <div className="bg-white rounded-2xl shadow-xl mx-auto overflow-hidden">
-                {/* <ProfileHeader name={name} email={profileData?.email} phone={mobile} status={status} /> */}
+                {/* <ProfileHeader name={name} email={data?.email} phone={mobile} status={status} /> */}
 
                 <ProfileNavigationTabs
                     activeTab={activeTab}

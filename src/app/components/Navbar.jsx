@@ -60,7 +60,7 @@ const Navbar = ({ isSidebarOpen, setIsSidebarOpen }) => {
               className="font-bold text-primary-text text-2xl"
               style={{ color: 'var(--color-primary-text)' }}
             >
-              Badi Eats
+              ADD
             </p>
           </a>
         )}

@@ -87,8 +87,8 @@ export const MarketingTab = ({ formData, handleChange, errors }) => {
             Product Tags
           </label>
 
-          <div className="flex gap-2 flex-wrap bg-white/10 backdrop-blur-md border rounded-xl px-3 py-2">
-            {formData.tags?.map((tag, idx) => (
+          {/* <div className="flex gap-2 flex-wrap bg-white/10 backdrop-blur-md border rounded-xl px-3 py-2">
+            {formData?.tags?.map((tag, idx) => (
               <span
                 key={idx}
                 className="bg-indigo-600 text-white text-sm px-2 py-1 rounded-full flex items-center gap-1"
@@ -112,7 +112,7 @@ export const MarketingTab = ({ formData, handleChange, errors }) => {
               placeholder="Add tag..."
               className="bg-transparent text-white placeholder-gray-400 focus:outline-none px-1 py-0.5"
             />
-          </div>
+          </div> */}
           {errors.tags && (
             <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
               <FaExclamationTriangle />

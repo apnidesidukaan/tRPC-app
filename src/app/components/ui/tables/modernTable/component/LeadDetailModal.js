@@ -375,7 +375,7 @@ const LeadDetailModal = ({ rowData, isModalOpen, setIsModalOpen }) => {
 
           {activeTab === 'details' && (
             <div className="space-y-6">
-              {(details.businessType || details.taxId || details.licenseNumber || details.vehicleType) ? (
+              {(details?.businessType || details?.taxId || details?.licenseNumber || details?.vehicleType) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {details.businessType && (
                     <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200">
@@ -441,10 +441,10 @@ const LeadDetailModal = ({ rowData, isModalOpen, setIsModalOpen }) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {leadsModule?.map((mod, i) => (
                       <div key={i} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200 hover:shadow-md transition-shadow duration-200">
+                        <div className="p-2 bg-blue-600 w-fit rounded-lg">
+                          <FaBriefcase className="w-4 h-4 text-white" />
+                        </div>
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-blue-600 rounded-lg">
-                            <FaBriefcase className="w-4 h-4 text-white" />
-                          </div>
                           <div>
                             <h4 className="font-semibold text-blue-900">{mod.name}</h4>
                             {mod.description && (

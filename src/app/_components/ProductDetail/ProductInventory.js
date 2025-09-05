@@ -1,46 +1,58 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useCartManager } from "~/app/components/CartManager";
-// import { useSession } from "next-auth/react";
+import { api } from "~/trpc/react";
+import InventoryStore from "./StoreDetail";
+import { useSession } from "next-auth/react";
 
 // =========================================================
 export default function InventoryList({ inventoryItem }) {
-  // const { data:session } = useSession();
+  const { data: session } = useSession();
 
-  // console.log('session=========', session);
+  const utils = api.useUtils()
 
-  const [cartItems, setCartItems] = useState([]);
+  const addItemToServerCart = api.cart.addItem.useMutation({
+    onSuccess: () => {
+      console.log('========================== addItem onSuccess ==========================');
+      utils.cart.getCartItemsByCartId.invalidate(); // simpler: refresh whole cart
+      setIsItemAdded(prev => !prev);
+    },
+  });
 
-  const { getCartItems, addItemToCart } = useCartManager()
-  useEffect(() => {
-    // Fetch cart items when component mounts
-    const cartData = getCartItems() || [];
-    setCartItems(cartData);
-  }, []);
+  const updateItemInServerCart = api.cart.updateItem.useMutation({
+    onSuccess: () => {
+      console.log('========================== updateItem onSuccess ==========================');
+      utils.cart.getCartItemsByCartId.invalidate();
+      setIsItemAdded(prev => !prev);
+    },
+  });
+
+  const removeItemFromServerCart = api.cart.remove.useMutation({
+    onSuccess: () => {
+      console.log('========================== removeItem onSuccess ==========================');
+      utils.cart.getCartItemsByCartId.invalidate();
+      setIsItemAdded(prev => !prev);
+    },
+  });
 
 
 
-  // useEffect(() => {
-  //   // Fetch cart items when component mounts
+  const [isItemAdded, setIsItemAdded] = useState(false);
 
-
-  //   const newSelected = new Set();
-  //   const newQuantities = {};
-
-  //   cartItems.forEach((cartItem) => {
-  //     newSelected.add(cartItem.id);
-  //     newQuantities[cartItem.id] = cartItem.quantity;
-  //   });
-
-  //   setSelectedItems(newSelected);
-  //   setQuantities(newQuantities);
-  // }, []);
-
-  const cartMatches = getCartItems()?.filter(cart =>
-    inventoryItem?.filter(inv => inv?._id === cart?.inventoryId)
+  const { data: cart } = api.cart.get.useQuery();
+  const { data: cartItems, isLoading, refetch } = api.cart.getCartItemsByCartId.useQuery(
+    String(cart?.id),
+    {
+      enabled: !!cart?.id, // only run when cart.id exists
+    }
   );
 
-  console.log("cartMatches =====", cartMatches);
+
+
+
+  const cartMatches = cartItems?.filter(cart =>
+    inventoryItem?.filter(inv => inv?.id === cart?.inventoryId)
+  );
+
 
 
 
@@ -67,39 +79,13 @@ export default function InventoryList({ inventoryItem }) {
   }
   // =========================================================
 
-  const handleItemSelect = (item) => {
-    const newSelected = new Set(selectedItems);
-    const itemId = item?.id;
-    const quantity = quantities[itemId] || 1;
 
-    if (newSelected.has(itemId)) {
-      newSelected.delete(itemId);
-      const newQuantities = { ...quantities };
-      delete newQuantities[itemId];
-      setQuantities(newQuantities);
-    } else {
-      newSelected.add(itemId);
-      setQuantities({ ...quantities, [itemId]: quantity });
-      // Add item to cart when selected
-      // console.log('item to be added to cart =====', item, quantity);
-      addItemToCart(item, quantity);
-    }
-    setSelectedItems(newSelected);
+  // keep this clean: always expect full item + delta
+  const updateQuantity = (item, quantity) => {
+    addItemToCart(item, quantity);
+    setIsItemAdded(true); // keep buttons enabled after adding
   };
 
-
-
-
-  const updateQuantity = (itemId, quantity) => {
-    if (quantity > 0) {
-      setQuantities({ ...quantities, [itemId]: quantity });
-
-      const item = inventoryItem.find(inv => inv.id === itemId);
-      if (item) {
-        addItemToCart(item, quantity);
-      }
-    }
-  };
 
 
   const getTotalAmount = () => {
@@ -109,12 +95,6 @@ export default function InventoryList({ inventoryItem }) {
       return total + (item?.price || 0) * quantity;
     }, 0);
   };
-
-  // const getTotalItems = () => {
-  //   return Array.from(selectedItems).reduce((total, itemId) => {
-  //     return total + (quantities[itemId] || 1);
-  //   }, 0);
-  // };
 
 
   const getTotalItems = () => {
@@ -149,6 +129,82 @@ export default function InventoryList({ inventoryItem }) {
 
 
 
+  const addItemToCart = (inventory, qty) => {
+    const data = {
+      price: inventory.price,
+      name: inventory.name,
+      quantity: qty,
+      inventoryId: inventory?.id,
+      vendorId: inventory?.vendorId,
+      image: inventory?.image,
+    };
+
+    if (session?.user) {
+      // Find if item already exists in serverCart
+      const existingItem = cartItems?.find(
+        (item) => item.inventoryId === inventory.id
+      );
+
+      if (!existingItem && qty > 0) {
+        // ✅ New item
+        addItemToServerCart.mutate(data);
+      } else if (existingItem) {
+        const newQuantity = existingItem.quantity + qty;
+
+        if (newQuantity > 0) {
+          // ✅ Update existing with new quantity
+          updateItemInServerCart.mutate({
+            cartItemId: existingItem.id,
+            quantity: newQuantity,
+          });
+        } else {
+          // ✅ Remove if qty goes 0 or below
+          removeItemFromServerCart.mutate({ cartItemId: existingItem.id });
+        }
+      }
+    } else {
+      // Guest cart in localStorage
+      const cart = getLocalStorageCart();
+      const existingItem = cart.find((item) => item.inventoryId === inventory.id);
+
+      if (!existingItem && qty > 0) {
+        // ✅ Add new
+        const cartItem = {
+          ...data,
+          id: `${data.inventoryId}-${Date.now()}`,
+          addedAt: new Date().toISOString(),
+        };
+        saveToLocalStorage(cartItem);
+      } else if (existingItem) {
+        const newQuantity = existingItem.quantity + qty;
+
+        if (newQuantity > 0) {
+          // ✅ Update existing
+          const updatedCart = cart.map((item) =>
+            item.inventoryId === inventory.id
+              ? { ...item, quantity: newQuantity }
+              : item
+          );
+          localStorage.setItem("cart", JSON.stringify(updatedCart));
+        } else {
+          // ✅ Remove
+          const updatedCart = cart.filter(
+            (item) => item.inventoryId !== inventory.id
+          );
+          localStorage.setItem("cart", JSON.stringify(updatedCart));
+        }
+      }
+    }
+  };
+
+
+
+
+
+
+
+
+
   // =========================================================
 
   return (
@@ -163,7 +219,7 @@ export default function InventoryList({ inventoryItem }) {
           <span className="font-semibold">{getTotalItems()} items</span>
         </div>
       )} */}
-      {cartMatches.length > 0 && (
+      {cartMatches?.length > 0 && (
         <div className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 2.5M7 13l2.5 2.5m6-7a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -180,53 +236,25 @@ export default function InventoryList({ inventoryItem }) {
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Product Inventory</h2>
           <p className="text-gray-600">Select items to add to your cart</p>
         </div>
-
-        <div className="flex items-center gap-4">
-          {/* View Mode Toggle */}
-          <div className="bg-gray-100 rounded-lg p-1 flex">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === "grid"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === "list"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
-
-        </div>
       </div>
+
 
 
       {/* Grid View  ==================================================================*/}
       {viewMode === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-6">
           {inventoryItem?.map((inv) => {
-            // console.log('==============', quantities[inv.id]);
             const isSelected = selectedItems.has(inv.id);
-            // const quantity = quantities[inv.id] || 1;
-            const quantity = cartMatches.find(cart => cart.inventoryId === inv.id)?.quantity || 0;
+            console.log('cartMatches=cartMatches========', cartMatches);
+            const quantity = cartMatches?.find(cart => cart.inventoryId === inv.id)?.quantity || 0;
             const statusConfig = getStatusConfig(inv.status);
             const approvalConfig = getApprovalConfig(inv.approvalStatus);
             const isLowStock = inv.stock <= (inv.lowStockThreshold || 10);
 
             return (
-              <div
-                key={inv.id}
+              <div key={`${inv.id}-${inv.vendorId}`}
+
+
                 className={`bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border-2 transform hover:-translate-y-1 ${isSelected
                   ? 'border-indigo-500 ring-4 ring-indigo-100'
                   : 'border-gray-100 hover:border-gray-200'
@@ -234,7 +262,7 @@ export default function InventoryList({ inventoryItem }) {
               >
                 {/* Product Header */}
                 <div className="p-4 pb-0">
-                  <img src={inv.metaImage || inv.image[0]} alt={inv.name} className="w-full h-48 object-cover rounded-lg mb-4" />
+                  <img src={inv.image} alt={inv.name} className="w-full h-48 object-cover rounded-lg mb-4" />
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 text-lg mb-1 line-clamp-1">
@@ -245,21 +273,14 @@ export default function InventoryList({ inventoryItem }) {
                           {inv.sku || "N/A"}
                         </span>
                       </div>
+
+                      <h3 className="font-semibold text-gray-900 text-lg mb-1 line-clamp-1">
+                        {/* {inv.s || "Priyanka store"} */}
+                        <InventoryStore storeId={inv?.vendorId} />
+                      </h3>
                     </div>
 
-                    <button
-                      onClick={() => handleItemSelect(inv)}
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'border-gray-300 hover:border-indigo-500'
-                        }`}
-                    >
-                      {isSelected && (
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
+
                   </div>
 
                   {/* Price */}
@@ -285,24 +306,8 @@ export default function InventoryList({ inventoryItem }) {
 
                 {/* Status Badges */}
                 <div className="px-4 pb-4">
-                  <div className="flex gap-2 mb-4">
-                    {/* <span className={`${statusConfig.bg} ${statusConfig.text} px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}>
-                      <span className="text-xs">{statusConfig.icon}</span>
-                      {inv.status}
-                    </span> */}
-                    {/* <span className={`${approvalConfig.bg} ${approvalConfig.text} px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}>
-                      <span className="text-xs">{approvalConfig.icon}</span>
-                      {inv.approvalStatus}
-                    </span> */}
-                  </div>
 
-                  {/* <div className="text-xs text-gray-500 mb-4">
-                    Added: {new Date(inv.createdAt).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
-                  </div> */}
+
 
                   {/* Quantity Selector */}
                   <div className="bg-gray-50 rounded-lg p-3">
@@ -311,22 +316,27 @@ export default function InventoryList({ inventoryItem }) {
                     </label>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => updateQuantity(inv.id, Math.max(1, quantity - 1))}
-                        className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                        onClick={() => updateQuantity(inv, -1)}   // pass full item + -1
+                        className="cursor-pointer w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
                       >
                         −
                       </button>
                       <input
-                        type="number"
-                        value={quantity}
-                        onChange={(e) => updateQuantity(inv.id, Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-16 text-center py-1 px-2 border border-gray-300 rounded-md text-sm font-medium"
-                        min="1"
-                        max={inv.stock}
+                        // type="number"
+                        value={!isItemAdded ? quantity : '-'}
+                        disabled={isItemAdded}
+                        // onChange={(e) => updateQuantity(inv.id, Math.max(1, parseInt(e.target.value) || 1))}
+                        className=" w-16 text-center py-1 px-2 border border-gray-300 rounded-md text-sm font-medium"
+                      // min="1"
+                      // max={inv.stock}
                       />
                       <button
-                        onClick={() => updateQuantity(inv.id, Math.min(inv.stock, quantity + 1))}
-                        className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                        disabled={isItemAdded}
+                        // type="number"
+
+                        value={quantity}
+                        onClick={() => updateQuantity(inv, 1)}    // pass full item + +1
+                        className="cursor-pointer w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
                       >
                         +
                       </button>
@@ -346,180 +356,7 @@ export default function InventoryList({ inventoryItem }) {
         </div>
       )}
 
-      {/* List View  ==================================================================*/}
-      {viewMode === "list" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Select
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Product
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Stock
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Approval
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Quantity
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {inventoryItem.map((inv, index) => {
-                  const isSelected = selectedItems.has(inv.id);
-                  const quantity = quantities[inv.id] || 1;
-                  const statusConfig = getStatusConfig(inv.status);
-                  const approvalConfig = getApprovalConfig(inv.approvalStatus);
-                  const isLowStock = inv.stock <= (inv.lowStockThreshold || 10);
 
-                  return (
-                    <tr
-                      key={inv.id}
-                      className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : ''
-                        } ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleItemSelect(inv)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected
-                            ? 'bg-indigo-600 border-indigo-600 text-white'
-                            : 'border-gray-300 hover:border-indigo-500'
-                            }`}
-                        >
-                          {isSelected && (
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900">
-                            {inv.name || "Unnamed Product"}
-                          </div>
-                          <div className="text-xs text-gray-500 font-mono">
-                            SKU: {inv.sku || "N/A"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-lg font-bold text-indigo-600">
-                          ₹{Number(inv.price || 0).toLocaleString('en-IN')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${isLowStock ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                          <span className={`font-semibold ${isLowStock ? 'text-red-600' : 'text-green-600'}`}>
-                            {inv.stock}
-                          </span>
-                          {isLowStock && (
-                            <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
-                              Low
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`${statusConfig.bg} ${statusConfig.text} px-2 py-1 rounded-full text-xs font-medium capitalize flex items-center gap-1 w-fit`}>
-                          <span className="text-xs">{statusConfig.icon}</span>
-                          {inv.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`${approvalConfig.bg} ${approvalConfig.text} px-2 py-1 rounded-full text-xs font-medium capitalize flex items-center gap-1 w-fit`}>
-                          <span className="text-xs">{approvalConfig.icon}</span>
-                          {inv.approvalStatus}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {isSelected ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => updateQuantity(inv.id, Math.max(1, quantity - 1))}
-                              className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-sm font-bold transition-colors"
-                            >
-                              −
-                            </button>
-                            <span className="w-8 text-center font-semibold">{quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(inv.id, Math.min(inv.stock, quantity + 1))}
-                              className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-sm font-bold transition-colors"
-                            >
-                              +
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">Select item</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Checkout Summary ==================================================================*/}
-      {selectedItems.size > 0 && (
-        <div className="fixed bottom-6 right-6 bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full mx-auto lg:mx-0">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 2.5M7 13l2.5 2.5m6-7a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            Cart Summary
-          </h3>
-
-          <div className="space-y-2 mb-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Inventory selected:</span>
-              <span className="font-semibold">{selectedItems.size}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Total Items:</span>
-              <span className="font-semibold">{getTotalItems()}</span>
-            </div>
-            <div className="border-t pt-2">
-              <div className="flex justify-between">
-                <span className="font-semibold text-gray-900">Total Amount:</span>
-                <span className="text-xl font-bold text-indigo-600">
-                  ₹{getTotalAmount().toLocaleString('en-IN')}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setSelectedItems(new Set());
-                setQuantities({});
-              }}
-              className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-            >
-              Clear
-            </button>
-            <button className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg">
-              Checkout
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

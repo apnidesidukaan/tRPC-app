@@ -25,6 +25,7 @@ import ConfirmationDialogueBox from './ui/status/Confirmation';
 import { FaBusinessTime, FaJediOrder } from 'react-icons/fa';
 import { Boxes, CassetteTape, ChartBarStacked } from 'lucide-react';
 import { SiMarketo } from 'react-icons/si';
+import { FcDataConfiguration } from 'react-icons/fc';
 
 const ErpSidebar = (props) => {
   const location = usePathname();
@@ -73,6 +74,17 @@ const ErpSidebar = (props) => {
 
 
     },
+
+    {
+      name: 'Config',
+      icon: <FcDataConfiguration size={iconSize} />,
+      path: '/config',
+      activePath: ['/business-details', '/business'],
+
+
+    },
+
+
 
     {
       name: 'Inventory',
@@ -183,7 +195,7 @@ const ErpSidebar = (props) => {
             fontSize: 'var(--text-lg)', color: 'var(--color-primary-text)',
           }}
             className="font-bold text-primary-text ">
-            Badi Eats
+            ADD(ies)
           </p>
         </div>
 

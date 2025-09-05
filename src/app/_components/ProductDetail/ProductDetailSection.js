@@ -47,7 +47,7 @@ const ProductDetailPage = () => {
   
   // console.log(product)
   
-  console.log('inventoryItem ====', inventoryItem);
+  // console.log('inventoryItem ====', inventoryItem);
 
 
 
