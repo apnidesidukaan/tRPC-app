@@ -18,12 +18,28 @@ const MyWallet = () => {
   const { id } = useParams(); // Vendor/User ID
   const getWallet = api.wallet.get.useMutation();
 
+
+
+
+
+
+
   const [walletData, setWalletData] = useState<any>(null);
   const [showBalance, setShowBalance] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [amount, setAmount] = useState("");
   const [transactionType, setTransactionType] = useState("add");
+
+
+  const { data: transactions } = api.transaction.getByWallet.useQuery({
+    walletId: walletData?.id
+  });
+  console.log('transactions', transactions);
+
+
+
+
 
   // 🔹 Fetch wallet on mount
   useEffect(() => {
@@ -288,15 +304,53 @@ const MyWallet = () => {
           {activeTab === 'transactions' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Recent Transactions</h3>
-              <div className="bg-gray-50 p-8 rounded-xl text-center">
-                <div className="text-gray-400 mb-2">
-                  <Wallet className="h-12 w-12 mx-auto" />
+
+              {transactions && transactions.length > 0 ? (
+                <div className="space-y-3">
+                  {transactions.map((txn) => (
+                    <div
+                      key={txn.id}
+                      className="flex justify-between items-center bg-white rounded-lg shadow-sm border p-4"
+                    >
+                      {/* Left side */}
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {txn.description}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(txn.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+
+                      {/* Right side */}
+                      <div className="text-right">
+                        <p
+                          className={`text-sm font-semibold ${txn.type === 'credit' ? 'text-green-600' : 'text-red-600'
+                            }`}
+                        >
+                          {txn.type === 'credit' ? '+' : '-'}₹{txn.amount}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Balance: ₹{txn.balanceAfter}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-gray-600">No transactions found</p>
-                <p className="text-sm text-gray-500 mt-1">Your transaction history will appear here</p>
-              </div>
+              ) : (
+                <div className="bg-gray-50 p-8 rounded-xl text-center">
+                  <div className="text-gray-400 mb-2">
+                    <Wallet className="h-12 w-12 mx-auto" />
+                  </div>
+                  <p className="text-gray-600">No transactions found</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Your transaction history will appear here
+                  </p>
+                </div>
+              )}
             </div>
           )}
+
         </div>
       </div>
     </div>

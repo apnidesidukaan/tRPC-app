@@ -1,70 +1,70 @@
-import React from 'react';
-import { Card, CardContent } from '../ui/card/card';
-import { BiStore, BiMap, BiPhone } from 'react-icons/bi';
-import { FaStore } from 'react-icons/fa';
-import { useRouter } from 'next/navigation';
+'use client'
+import React, { useEffect, useState } from 'react';
+// import DiscoveryCard from './DiscoveryCard';
+// import PromotionalSections from './HeroTiles';
+// import Banner from './Banner';
+import Loader from '../ui/status/Loader';
+import TrendingProductsSection from '../sections/TrendingProductsSection';
+// import CategoryTabs from '.CategoryTabs';
+import InventoryCard from '../ui/card/InventoryCard';
+import Header from '../../layouts/Header';
+import Footer from '../../layouts/Footer';
+import { api } from "~/trpc/react";
+import ProductCard from '../ui/card/ProductCard';
+import CategoryTabs from './hero/CategoryTabs';
 
-export default function StoreDisplay({ storesData }) {
-  const router = useRouter();
-function formatAddress(address) {
-  return [
-    address.street,
-    address.area,
-    address.landmark,
-    address.city,
-    address.state,
-    address.zipCode,
-    address.country
-  ]
-    .filter(Boolean) // Remove empty/undefined fields
-    .join(', ');
-}
+//===================================================================
+
+export default function StoreDisplay() {
+
+  //===================================================================
+  const [mood, setMood] = useState('Ganesh Chaturthi');
+  const [categoryId, setCategoryId] = useState('');
+  const { data: discoveries } = api.discovery.getAll.useQuery();
+  const { data: products, isLoading } = api.product.getProductsByCategoryId.useQuery(categoryId);
+  console.log('========= categoryId', categoryId);
+
+  //===================================================================
   return (
-    <div className="p-6">
-      {/* <h2 className="text-2xl font-bold mb-6">Vendor Stores</h2> */}
-      
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {storesData?.map((store) => (
-          <Card key={store.id} className="hover:shadow-lg transition-shadow">
-            <div className="h-32 bg-gray-100 flex items-center justify-center text-gray-400">
-              <BiStore size={48} />
+    <>
+      <section className="p-2 lg:p-4">
+
+        <CategoryTabs
+          setCategoryId={setCategoryId}
+        />
+
+        {/* <Banner /> */}
+        {/* <CategoryTabs
+          setCategoryId={setCategoryId}
+        /> */}
+        <div className="flex gap-4 overflow-x-auto py-2 px-1 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+          {products?.map((c) => (
+            <div className="flex-shrink-0 w-40">
+              <ProductCard key={c.id} product={c} />
             </div>
+          ))}
+        </div>
 
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-xl font-semibold">{store.name}</h3>
-                <FaStore
-                  size={22}
-                  className="text-white bg-accent p-1 rounded cursor-pointer"
-                  onClick={() => router.push(`/store-details/${store._id}`)}
-                />
-              </div>
+        {/* <PromotionalSections
+          promoContentSectionData={promoContentSectionData}
+          mood={mood} /> */}
+        {/* <h2 className="mt-12 text-xl font-bold text-gray-800">New Arrivals</h2> */}
 
-              {store.description && (
-                <p className="text-sm text-muted-foreground mb-3">{store.description}</p>
-              )}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4 bg-gray-50">
+          {discoveries?.map((bestSeller) => (
+            <div key={bestSeller.id} className="flex">
+              {/* <DiscoveryCard bestSeller={bestSeller} /> */}
+            </div>
+          ))}
+        </div>
 
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p className="flex items-center gap-1">
-                  <BiMap /> {formatAddress(store.address) || "Hazratganj, Lucknow"}
-                </p>
-                <p className="flex items-center gap-1">
-                  <BiPhone /> {'+91- '+store.mobile || "+91-7392988369"}
-                </p>
-              </div>
+        {/* <TrendingProductsSection /> */}
+        {/* {discoveries?.map((section, index) => (
+        ))} */}
+      </section>
 
-              <div className="mt-3 pt-3 border-t text-sm">
-                <p>Products: <span className="font-medium">{store.product_count || 0}</span></p>
-                {store.ratings && (
-                  <p className="text-yellow-500 mt-1">
-                    ⭐ {store.ratings.average} ({store.ratings.total_reviews} reviews)
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+
+    </>
   );
 }
+//===================================================================

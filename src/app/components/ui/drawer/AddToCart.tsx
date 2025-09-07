@@ -85,10 +85,10 @@ export default function CartDrawer({ isOpen, onClose }) {
 
 
   let distance = haversineDistance(user?.address?.geo, store?.address?.geo)
-  console.log('distance =========================  ======', distance);
+  // console.log('distance =========================  ======', distance);
 
   const { data: priceDetails, isLoading: priceLoading } = api.delivery.calculatePrice.useQuery({
-    distance: distance/1000, // ← later replace with actual distance from user’s address
+    distance: distance / 1000, // ← later replace with actual distance from user’s address
     cartValue: totalDiscounted ?? 0,
     express: false, // or true if they choose express delivery
   }, {
@@ -312,57 +312,61 @@ export default function CartDrawer({ isOpen, onClose }) {
         </div>
 
         {/* Bill Details */}
-        <div className="space-y-2 border-t bg-white p-4 text-sm">
-          <h3 className="mb-1 text-base font-semibold">Bill details</h3>
+        {session?.user &&
+          <>
+            <div className="space-y-2 border-t bg-white p-4 text-sm">
+              <h3 className="mb-1 text-base font-semibold">Bill details</h3>
 
-          <div className="flex justify-between">
-            <div className="text-muted flex items-center gap-2">
-              <FiTag />
-              Item total
-              <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                Saved ₹{savings}
-              </span>
+              <div className="flex justify-between">
+                <div className="text-muted flex items-center gap-2">
+                  <FiTag />
+                  Item total
+                  <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    Saved ₹{savings}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted mr-1 text-xs line-through">
+                    ₹{totalMRP}
+                  </span>
+                  ₹{totalDiscounted}
+                </div>
+              </div>
+
+              <div className="text-muted flex justify-between">
+                <div className="flex items-center gap-2">
+                  <FiTruck /> Delivery charge
+                </div>
+                <div>₹{deliveryCharge}</div>
+              </div>
+
+              <div className="text-muted flex justify-between">
+                <div className="flex items-center gap-2">
+                  <FiTag /> Platform fee
+                </div>
+                <div>₹{platformFee}</div>
+              </div>
+
+              <div className="text-muted flex justify-between">
+                <div className="flex items-center gap-2">
+                  <FiBox /> Handling charge
+                </div>
+                <div>₹{handlingCharge}</div>
+              </div>
+
+              <hr className="my-2 border-t border-dashed" />
+              <div className="flex justify-between text-base font-bold">
+                <span>Grand total</span>
+                <span>₹{totalAmount}</span>
+              </div>
             </div>
-            <div>
-              <span className="text-muted mr-1 text-xs line-through">
-                ₹{totalMRP}
-              </span>
-              ₹{totalDiscounted}
+
+            <div className="flex items-center justify-between border-t bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
+              <span>Your total savings</span>
+              {/* <span>₹{savings}</span> */}
             </div>
-          </div>
-
-          <div className="text-muted flex justify-between">
-            <div className="flex items-center gap-2">
-              <FiTruck /> Delivery charge
-            </div>
-            <div>₹{deliveryCharge}</div>
-          </div>
-
-          <div className="text-muted flex justify-between">
-            <div className="flex items-center gap-2">
-              <FiTag /> Platform fee
-            </div>
-            <div>₹{platformFee}</div>
-          </div>
-
-          <div className="text-muted flex justify-between">
-            <div className="flex items-center gap-2">
-              <FiBox /> Handling charge
-            </div>
-            <div>₹{handlingCharge}</div>
-          </div>
-
-          <hr className="my-2 border-t border-dashed" />
-          <div className="flex justify-between text-base font-bold">
-            <span>Grand total</span>
-            <span>₹{totalAmount}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between border-t bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
-          <span>Your total savings</span>
-          {/* <span>₹{savings}</span> */}
-        </div>
+          </>
+        }
       </div>
 
       {/* Footer */}

@@ -79,7 +79,7 @@ const ProductCard = ({ product, onToggleWishlist }) => {
                 className="relative cursor-pointer"
             >
                 <Image
-                    src={product.metaImage || product.icon || "/placeholder.png"}
+                    // src={product.metaImage || product.icon || "/placeholder.png"}
                     alt={product.name}
                     width={300}
                     height={200}

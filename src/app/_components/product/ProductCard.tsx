@@ -20,11 +20,11 @@ export function ProductCard({ prod, onEdit, onDelete }: any) {
         onClick={() => router.push(`/inventory/${prod.id}`)}
       >
         <div className="flex-1">
-          <img
-            src={prod.metaImage || "/default-module.png"}
+          {/* <img
+            // src={prod?.metaImage || "/default-module.png"}
             alt={prod.name}
             className="w-16 h-16 rounded-full object-cover mb-2"
-          />
+          /> */}
         </div>
 
         <div className="flex items-start justify-between mb-4">

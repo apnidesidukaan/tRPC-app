@@ -12,22 +12,17 @@ const BackgroundVisual = () => {
     <>
       <div className="background-visual">
         {/* Decorative Bell Icon */}
-        <img
-          src="/assets/bell.png"
-          alt="Bell"
-          className="decorative-icon bell"
-        />
-
+   
         {/* Left swirl */}
         <ThemedSearchBar
           placeholder={`Search in ${mood}...`}
           onSearch={(query) => console.log("Search query:", query)}
         />
-        <img
+        {/* <img
           src="/assets/swirl-left.png"
           alt="Swirl Left"
           className="decorative-icon swirl-left"
-        />
+        /> */}
         <CategoryTabs />
 
         {/* Right swirl */}

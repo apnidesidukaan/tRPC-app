@@ -6,6 +6,7 @@ import HeroSection from './components/sections/HeroSection';
 import TopBrandsSection from './components/sections/TopBrandsSection';
 import TopCategoriesSection from './components/sections/TopCategoriesSection';
 import TrendingProductsSection from './components/sections/TrendingProductsSection';
+import UploadThingsUploader from './components/uploadThigs';
 import Footer from './layouts/Footer';
 import Header from './layouts/Header';
 import MobileMenu from './layouts/MobileMenu';
@@ -14,10 +15,13 @@ export default async function HomePage() {
 
 
   return (
+
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+      <UploadThingsUploader />
       <Header
 
       />
+
 
       <MobileMenu
 
@@ -26,8 +30,8 @@ export default async function HomePage() {
       <main>
 
         <HeroSection />
-        
-        <DiscoverySection/>
+
+        <DiscoverySection />
         {/* <TrendingProductsSection  /> */}
 
       </main>

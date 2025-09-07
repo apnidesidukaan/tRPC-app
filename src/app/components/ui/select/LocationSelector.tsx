@@ -1,13 +1,52 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, ChevronDown, X } from 'lucide-react';
+import { api } from '~/trpc/react';
 
 const LocationSelector = () => {
   const [location, setLocation] = useState('Detecting...');
-  const [coords, setCoords] = useState(null);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
+  const { data: userProfile } = api.user.getProfile.useQuery();
+
+  // --------------------------------------
+  // 1. Load location from user profile (if available)
+  // --------------------------------------
+  useEffect(() => {
+    if (userProfile?.address?.geo) {
+      const { lat, lng } = userProfile.address.geo;
+
+      setCoords({ lat, lng });
+
+      // Reverse geocode once to get human-readable address
+      (async () => {
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+          );
+          const data = await response.json();
+          if (data?.address) {
+            const { city, town, village, state, country } = data.address;
+            const place = [city || town || village, state, country]
+              .filter(Boolean)
+              .join(', ');
+            setLocation(place || 'N/A');
+          } else {
+            setLocation('Saved Location');
+          }
+        } catch (err) {
+          console.error('Reverse geocoding failed:', err);
+          setLocation('Saved Location');
+        }
+      })();
+    }
+  }, [userProfile]);
+
+  // --------------------------------------
+  // 2. Manual Fetch (if user taps update)
+  // --------------------------------------
   const fetchLocation = async () => {
     if (!navigator.geolocation) {
       setLocation('Geolocation not supported');
@@ -28,7 +67,9 @@ const LocationSelector = () => {
 
           if (data?.address) {
             const { city, town, village, state, country } = data.address;
-            const place = [city || town || village, state, country].filter(Boolean).join(', ');
+            const place = [city || town || village, state, country]
+              .filter(Boolean)
+              .join(', ');
             setLocation(place || 'Location found');
           } else {
             setLocation('Unknown location');

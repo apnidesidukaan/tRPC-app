@@ -3,7 +3,7 @@ import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 export const deliveryRouter = createTRPCRouter({
 
-getAllRules: publicProcedure.query(({ ctx }) => {
+  getAllRules: publicProcedure.query(({ ctx }) => {
     return ctx.db.deliveryRule.findMany();
   }),
 
@@ -57,7 +57,7 @@ getAllRules: publicProcedure.query(({ ctx }) => {
     .query(async ({ ctx, input }) => {
       const rules = await ctx.db.deliveryRule.findMany();
       const config = await ctx.db.platformConfig.findFirst();
-  console.log('rules ====', rules,config);
+      console.log('rules ====', input.distance);
 
       // 1. find matching delivery rule
       const rule = rules.find(r => input.distance >= r.minDistance && input.distance <= r.maxDistance);
