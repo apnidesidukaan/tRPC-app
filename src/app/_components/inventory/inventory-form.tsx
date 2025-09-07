@@ -89,7 +89,6 @@ type InventoryFormProps = {
 // ===============================================================================
 export const InventoryForm = ({
   initialData,
-  onSuccess,
   // isSubmitting = false
 }: InventoryFormProps) => {
 
@@ -102,8 +101,8 @@ export const InventoryForm = ({
 
   // console.log(params);
 
-  const { mutate: createInventory, isPending: isCreated } = api.inventory.create.useMutation({ onSuccess });
-  const { mutate: updateInventory, isPending: isUpdated } = api.inventory.update.useMutation({ onSuccess });
+  const { mutate: createInventory, isPending: isCreated } = api.inventory.create.useMutation({  });
+  const { mutate: updateInventory, isPending: isUpdated } = api.inventory.update.useMutation({  });
 
   // ===============================================================================v
   const [formData, setFormData] = useState({

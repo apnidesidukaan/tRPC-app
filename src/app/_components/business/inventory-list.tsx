@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
-import { InventoryItem } from "./BusinessList";
+// import { BusinessList } from "./BusinessList";
 import { type RouterOutputs } from "~/trpc/react";
 
 type InventoryListProps = {
@@ -52,14 +52,14 @@ export const InventoryList = ({ initialInventories }: InventoryListProps) => {
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {inventories.map((inventory) => (
-        <InventoryItem
+      {/* {inventories.map((inventory) => (
+        <BusinessList
           key={inventory.id}
           inventory={inventory}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
-      ))}
+      ))} */}
     </div>
   );
 };

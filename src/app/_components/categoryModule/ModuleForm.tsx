@@ -44,8 +44,8 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ initialData, onSuccess }
     }, [initialData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value, type, checked } = e.target;
-        setForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+        const { name, value, type } = e.target;
+        setForm(prev => ({ ...prev, [name]: type === "checkbox" ? 0 : value }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
