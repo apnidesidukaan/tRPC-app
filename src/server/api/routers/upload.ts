@@ -1,28 +1,29 @@
-import { createUploadthing, type FileRouter } from "uploadthing/next";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createUploadthing, type FileRouter } from "@uploadthing/server";
+import { z } from "zod";
 
+// Initialize UploadThing
 const f = createUploadthing();
 
-// define file rules
+// Define your file upload routes
 export const uploadRouter = {
-  imageUploader: f({ image: { maxFileSize: "4MB" } }) // allow only images
-    .middleware(async ({ ctx, req }) => {
-      // ✅ protect upload with your tRPC auth/session
-      if (!ctx.session?.user) throw new Error("Unauthorized");
-      return { userId: ctx.session.user.id };
-    })
-    .onUploadComplete(async ({ metadata, file }) => {
-      // called after upload
-      console.log("Upload complete:", file.url);
-      // save to DB if you want
-      return { uploadedBy: metadata.userId, url: file.url };
-    }),
+  imageUploader: f({
+    image: {
+      maxFileSize: "4MB",
+      maxFileCount: 1,
+    },
+  })
+  .middleware(async ({ req }) => {
+    // Authentication middleware
+    const user = await auth(req);
+    if (!user) throw new UploadThingError("Unauthorized");
+    return { userId: user.id };
+  })
+  .onUploadComplete(async ({ file, metadata }) => {
+    // Handle post-upload logic
+    console.log("File uploaded:", file.url);
+    return { fileUrl: file.url };
+  }),
 } satisfies FileRouter;
 
 export type UploadRouter = typeof uploadRouter;
-
-// register into your main router
-export const appRouter = createTRPCRouter({
-  upload: uploadRouter as any,
-  // ...other routers
-});
+export const uploadthing = f;

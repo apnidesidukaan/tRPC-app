@@ -1,21 +1,20 @@
+// /src/components/FileUploader.tsx
 "use client";
 
 import { UploadButton } from "@uploadthing/react";
-import type { UploadRouter } from "~/server/api/routers/upload";
+import type { UploadRouter } from "~/server/api/uploadthing";
 
-export default function UploadThingsUploader() {
+export default function FileUploader() {
   return (
-    <div className="p-4 border w-fit bg-accent rounded">
-      <UploadButton<UploadRouter>
-        endpoint="imageUploader"
-        onClientUploadComplete={(res) => {
-          console.log("Files uploaded:", res);
-          alert("Upload complete!");
-        }}
-        onUploadError={(err) => {
-          alert(`ERROR! ${err.message}`);
-        }}
-      />
-    </div>  
+    <UploadButton<UploadRouter>
+      endpoint="imageUploader"  
+      onClientUploadComplete={(res) => {
+        console.log("Upload complete:", res);
+        alert("File uploaded successfully!");
+      }}
+      onUploadError={(err) => {
+        console.error("Upload failed:", err);
+      }}
+    />
   );
 }
